@@ -38,14 +38,39 @@
 //! ## Features
 //!
 //! - **`ratatui`** - Enables the [`integrations::ratatui::ArtBox`] widget for TUI applications.
+//!
+//! ## Colors and Gradients
+//!
+//! artbox supports solid colors, linear gradients, and radial gradients:
+//!
+//! ```rust
+//! use artbox::{Renderer, Fill, LinearGradient, ColorStop, Color};
+//!
+//! let renderer = Renderer::default()
+//!     .with_fill(Fill::Linear(LinearGradient {
+//!         angle: 45.0,
+//!         stops: vec![
+//!             ColorStop::new(0.0, Color::rgb(255, 0, 0)),
+//!             ColorStop::new(1.0, Color::rgb(0, 0, 255)),
+//!         ],
+//!     }));
+//!
+//! let styled = renderer.render_styled("Hi", 20, 5).unwrap();
+//! println!("{}", styled.to_ansi_string());
+//! ```
 
 use std::sync::Arc;
 
 use figlet_rs::FIGfont;
 use unicode_width::UnicodeWidthStr;
 
+pub mod color;
 pub mod fonts;
 pub mod integrations;
+mod styled;
+
+pub use color::{Color, ColorStop, Fill, Hsl, LinearGradient, RadialGradient, Rgb};
+pub use styled::StyledRendered;
 
 /// A font that can be used to render text as ASCII art.
 ///
@@ -223,6 +248,7 @@ pub struct Renderer {
     fonts: Vec<Font>,
     alignment: Alignment,
     letter_spacing: i16,
+    fill: Option<Fill>,
 }
 
 impl Renderer {
@@ -235,6 +261,7 @@ impl Renderer {
             fonts,
             alignment: Alignment::TopLeft,
             letter_spacing: 0,
+            fill: None,
         }
     }
 
@@ -266,6 +293,42 @@ impl Renderer {
     pub fn with_letter_spacing(mut self, letter_spacing: i16) -> Self {
         self.letter_spacing = letter_spacing;
         self
+    }
+
+    /// Sets the fill style (color or gradient) for rendered text.
+    ///
+    /// The fill is applied to each non-space character based on its position
+    /// within the bounding box.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use artbox::{Renderer, Fill, LinearGradient, ColorStop, Color};
+    ///
+    /// // Solid color
+    /// let renderer = Renderer::default()
+    ///     .with_fill(Fill::solid(Color::rgb(255, 100, 0)));
+    ///
+    /// // Gradient
+    /// let renderer = Renderer::default()
+    ///     .with_fill(Fill::Linear(LinearGradient::horizontal(
+    ///         Color::rgb(255, 0, 0),
+    ///         Color::rgb(0, 0, 255),
+    ///     )));
+    /// ```
+    pub fn with_fill(mut self, fill: Fill) -> Self {
+        self.fill = Some(fill);
+        self
+    }
+
+    /// Returns true if a fill style is configured.
+    pub fn has_fill(&self) -> bool {
+        self.fill.is_some()
+    }
+
+    /// Returns a reference to the fill style, if any.
+    pub fn fill(&self) -> Option<&Fill> {
+        self.fill.as_ref()
     }
 
     /// Renders text into a new string buffer.
@@ -328,6 +391,65 @@ impl Renderer {
         }
 
         Err(RenderError::NoFit)
+    }
+
+    /// Renders text with colors applied, returning a styled character grid.
+    ///
+    /// This method is similar to [`Renderer::render`] but produces a
+    /// [`StyledRendered`] with per-character color information based on
+    /// the configured [`Fill`].
+    ///
+    /// If no fill is configured, characters will have no color (plain text).
+    ///
+    /// # Errors
+    ///
+    /// Same error conditions as [`Renderer::render`].
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use artbox::{Renderer, Fill, Color};
+    ///
+    /// let renderer = Renderer::default()
+    ///     .with_fill(Fill::solid(Color::rgb(255, 0, 0)));
+    ///
+    /// let styled = renderer.render_styled("Hi", 20, 5)?;
+    /// println!("{}", styled.to_ansi_string());
+    /// # Ok::<(), artbox::RenderError>(())
+    /// ```
+    pub fn render_styled(
+        &self,
+        text: &str,
+        width: u16,
+        height: u16,
+    ) -> Result<StyledRendered, RenderError> {
+        // First render to plain text
+        let rendered = self.render(text, width, height)?;
+
+        // Apply fill if configured
+        let styled = if let Some(fill) = &self.fill {
+            styled::apply_fill(
+                &rendered.text,
+                fill,
+                width,
+                height,
+                rendered.width,
+                rendered.height,
+                rendered.font_index,
+            )
+        } else {
+            // No fill - create plain styled output with no colors
+            styled::apply_plain(
+                &rendered.text,
+                width,
+                height,
+                rendered.width,
+                rendered.height,
+                rendered.font_index,
+            )
+        };
+
+        Ok(styled)
     }
 }
 
@@ -1073,5 +1195,118 @@ mod tests {
         for line in &lines {
             assert_eq!(line.len(), 10);
         }
+    }
+
+    // ==================== Fill and Styled Rendering Tests ====================
+
+    #[test]
+    fn renderer_with_fill_solid() {
+        let renderer =
+            Renderer::new(vec![Font::plain()]).with_fill(Fill::solid(Color::rgb(255, 0, 0)));
+        assert!(renderer.has_fill());
+    }
+
+    #[test]
+    fn renderer_without_fill() {
+        let renderer = Renderer::new(vec![Font::plain()]);
+        assert!(!renderer.has_fill());
+        assert!(renderer.fill().is_none());
+    }
+
+    #[test]
+    fn renderer_fill_accessor() {
+        let fill = Fill::solid(Color::rgb(100, 150, 200));
+        let renderer = Renderer::new(vec![Font::plain()]).with_fill(fill.clone());
+        assert!(renderer.fill().is_some());
+    }
+
+    #[test]
+    fn render_styled_with_solid_fill() {
+        let renderer =
+            Renderer::new(vec![Font::plain()]).with_fill(Fill::solid(Color::rgb(255, 0, 0)));
+        let styled = renderer.render_styled("AB", 5, 1).unwrap();
+
+        // Should have colored chars
+        assert_eq!(styled.chars.len(), 1);
+        assert!(styled.chars[0][0].fg.is_some());
+        let fg = styled.chars[0][0].fg.unwrap();
+        assert_eq!(fg.r, 255);
+        assert_eq!(fg.g, 0);
+        assert_eq!(fg.b, 0);
+    }
+
+    #[test]
+    fn render_styled_without_fill() {
+        let renderer = Renderer::new(vec![Font::plain()]);
+        let styled = renderer.render_styled("X", 5, 1).unwrap();
+
+        // Should produce output with no colors (fg = None)
+        assert_eq!(styled.chars.len(), 1);
+        assert!(!styled.chars[0].is_empty());
+
+        // All characters should have fg = None (no color set)
+        for row in &styled.chars {
+            for ch in row {
+                assert!(ch.fg.is_none(), "Expected fg=None but got {:?}", ch.fg);
+            }
+        }
+
+        // to_ansi_string should not contain ANSI color codes
+        let ansi = styled.to_ansi_string();
+        assert!(
+            !ansi.contains("\x1b[38;2;"),
+            "Expected no color codes in output: {}",
+            ansi
+        );
+    }
+
+    #[test]
+    fn render_styled_to_ansi_string() {
+        let renderer =
+            Renderer::new(vec![Font::plain()]).with_fill(Fill::solid(Color::rgb(255, 128, 64)));
+        let styled = renderer.render_styled("X", 5, 1).unwrap();
+        let ansi = styled.to_ansi_string();
+
+        // Should contain ANSI color codes
+        assert!(ansi.contains("\x1b[38;2;"));
+        assert!(ansi.contains('X'));
+    }
+
+    #[test]
+    fn render_styled_to_plain_string() {
+        let renderer =
+            Renderer::new(vec![Font::plain()]).with_fill(Fill::solid(Color::rgb(255, 0, 0)));
+        let styled = renderer.render_styled("Hi", 5, 1).unwrap();
+        let plain = styled.to_plain_string();
+
+        // Should not contain ANSI codes
+        assert!(!plain.contains("\x1b["));
+        assert!(plain.contains("Hi"));
+    }
+
+    #[test]
+    fn render_styled_with_gradient() {
+        let renderer = Renderer::new(vec![Font::plain()]).with_fill(Fill::Linear(
+            LinearGradient::horizontal(Color::rgb(0, 0, 0), Color::rgb(255, 255, 255)),
+        ));
+        let styled = renderer.render_styled("ABCD", 4, 1).unwrap();
+
+        // Colors should vary across the row
+        let first = styled.chars[0][0].fg.unwrap();
+        let last = styled.chars[0][3].fg.unwrap();
+        // First should be darker than last
+        assert!(first.r < last.r);
+    }
+
+    #[test]
+    fn render_styled_metrics() {
+        let renderer =
+            Renderer::new(vec![Font::plain()]).with_fill(Fill::solid(Color::rgb(0, 0, 0)));
+        let styled = renderer.render_styled("AB", 10, 5).unwrap();
+        let metrics = styled.metrics();
+
+        assert_eq!(metrics.width, 2);
+        assert_eq!(metrics.height, 1);
+        assert_eq!(metrics.font_index, 0);
     }
 }
