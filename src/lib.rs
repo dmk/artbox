@@ -29,7 +29,7 @@
 //! use artbox::{Renderer, fonts};
 //!
 //! // Use a specific font family
-//! let renderer = Renderer::new(fonts::family("cyber").unwrap());
+//! let renderer = Renderer::new(fonts::family("blocky").unwrap());
 //!
 //! // Or build a custom stack
 //! let renderer = Renderer::new(fonts::stack(&["slant", "small_slant"]));
@@ -151,6 +151,18 @@ impl Font {
         parse_figlet_content(&contents).map(Self::figlet)
     }
 
+    /// Creates a font from raw bytes encoded as UTF-8.
+    ///
+    /// Use this for fonts containing Unicode characters like block elements (█▀▄).
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the bytes are not valid UTF-8 or valid FIGlet format.
+    pub fn from_bytes_utf8(bytes: &[u8]) -> Result<Self, String> {
+        let contents = std::str::from_utf8(bytes).map_err(|e| format!("{e:?}"))?;
+        parse_figlet_content(contents).map(Self::figlet)
+    }
+
     /// Loads the standard FIGlet font bundled with `figlet-rs`.
     ///
     /// Returns `None` if the standard font cannot be loaded.
@@ -235,7 +247,7 @@ pub enum Alignment {
 /// let renderer = Renderer::default();
 ///
 /// // Custom configuration
-/// let renderer = Renderer::new(fonts::family("cyber").unwrap())
+/// let renderer = Renderer::new(fonts::family("blocky").unwrap())
 ///     .with_alignment(Alignment::Center)
 ///     .with_letter_spacing(-1)
 ///     .with_plain_fallback();

@@ -188,7 +188,7 @@ fn resolve_fonts(args: &Args) -> Vec<Font> {
         return family;
     }
 
-    fonts::default()
+    fonts::family("blocky").unwrap_or_else(fonts::default)
 }
 
 fn parse_alignment(value: &str) -> Result<Alignment, String> {

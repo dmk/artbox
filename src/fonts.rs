@@ -1,6 +1,6 @@
 //! Embedded FIGlet fonts and font management utilities.
 //!
-//! This module provides access to 27 embedded FIGlet fonts that are compiled
+//! This module provides access to 13 embedded FIGlet fonts that are compiled
 //! directly into the library. Fonts can be accessed individually or as
 //! pre-configured stacks for automatic size fallback.
 //!
@@ -16,7 +16,7 @@
 //! let stack = fonts::stack(&["big", "standard", "small"]);
 //!
 //! // Use a themed font family
-//! let cyber = fonts::family("cyber").unwrap();
+//! let blocky = fonts::family("blocky").unwrap();
 //! ```
 //!
 //! # Available Fonts
@@ -32,79 +32,53 @@
 use crate::Font;
 
 const EMBEDDED: &[(&str, &[u8])] = &[
+    //
+    // Default ones
+    //
+    ("big", include_bytes!("../assets/fonts/big.flf")),
+    ("standard", include_bytes!("../assets/fonts/standard.flf")),
+    ("small", include_bytes!("../assets/fonts/small.flf")),
+    ("mini", include_bytes!("../assets/fonts/mini.flf")),
+    //
+    // Banner
+    //
     ("banner", include_bytes!("../assets/fonts/banner.flf")),
     ("banner3", include_bytes!("../assets/fonts/banner3.flf")),
     ("banner4", include_bytes!("../assets/fonts/banner4.flf")),
-    ("big", include_bytes!("../assets/fonts/big.flf")),
-    (
-        "cyberlarge",
-        include_bytes!("../assets/fonts/cyberlarge.flf"),
-    ),
-    (
-        "cybermedium",
-        include_bytes!("../assets/fonts/cybermedium.flf"),
-    ),
-    (
-        "cybersmall",
-        include_bytes!("../assets/fonts/cybersmall.flf"),
-    ),
-    (
-        "isometric1",
-        include_bytes!("../assets/fonts/isometric1.flf"),
-    ),
-    ("keyboard", include_bytes!("../assets/fonts/keyboard.flf")),
-    ("mini", include_bytes!("../assets/fonts/mini.flf")),
-    ("poison", include_bytes!("../assets/fonts/poison.flf")),
+    //
+    // Script
+    //
     ("script", include_bytes!("../assets/fonts/script.flf")),
-    ("shadow", include_bytes!("../assets/fonts/shadow.flf")),
-    ("slant", include_bytes!("../assets/fonts/slant.flf")),
-    ("small", include_bytes!("../assets/fonts/small.flf")),
-    (
-        "small_isometric1",
-        include_bytes!("../assets/fonts/small_isometric1.flf"),
-    ),
-    (
-        "small_keyboard",
-        include_bytes!("../assets/fonts/small_keyboard.flf"),
-    ),
-    (
-        "small_poison",
-        include_bytes!("../assets/fonts/small_poison.flf"),
-    ),
     (
         "small_script",
         include_bytes!("../assets/fonts/small_script.flf"),
     ),
-    (
-        "small_shadow",
-        include_bytes!("../assets/fonts/small_shadow.flf"),
-    ),
+    //
+    // Slant
+    //
+    ("slant", include_bytes!("../assets/fonts/slant.flf")),
     (
         "small_slant",
         include_bytes!("../assets/fonts/small_slant.flf"),
     ),
+    //
+    // Blocky
+    //
     (
-        "small_tengwar",
-        include_bytes!("../assets/fonts/small_tengwar.flf"),
+        "ansi_regular",
+        include_bytes!("../assets/fonts/ansi_regular.flf"),
     ),
-    ("smpoison", include_bytes!("../assets/fonts/smpoison.flf")),
-    ("smscript", include_bytes!("../assets/fonts/smscript.flf")),
-    ("smtengwar", include_bytes!("../assets/fonts/smtengwar.flf")),
-    ("standard", include_bytes!("../assets/fonts/standard.flf")),
-    ("tengwar", include_bytes!("../assets/fonts/tengwar.flf")),
+    ("terminus", include_bytes!("../assets/fonts/terminus.flf")),
+    ("miniwi", include_bytes!("../assets/fonts/miniwi.flf")),
 ];
 
 const DEFAULT_SET_NAMES: &[&str] = &["big", "standard", "small", "mini"];
+const UTF8_FONTS: &[&str] = &["ansi_regular", "terminus", "miniwi"];
 const NAMED_SETS: &[(&str, &[&str])] = &[
     ("banner", &["banner", "banner3", "banner4"]),
-    ("cyber", &["cyberlarge", "cybermedium", "cybersmall"]),
-    ("isometric1", &["isometric1", "small_isometric1"]),
-    ("keyboard", &["keyboard", "small_keyboard"]),
-    ("poison", &["poison", "small_poison", "smpoison"]),
-    ("script", &["script", "small_script", "smscript"]),
-    ("shadow", &["shadow", "small_shadow"]),
+    ("blocky", &["ansi_regular", "terminus", "miniwi"]),
+    ("script", &["script", "small_script"]),
     ("slant", &["slant", "small_slant"]),
-    ("tengwar", &["tengwar", "small_tengwar", "smtengwar"]),
 ];
 
 /// Returns a list of all available embedded font names.
@@ -125,12 +99,20 @@ pub fn names() -> Vec<&'static str> {
 /// let also_slant = artbox::fonts::font("SLANT").unwrap(); // case-insensitive
 /// ```
 pub fn font(name: &str) -> Option<Font> {
-    let contents = EMBEDDED
+    let (embedded_name, contents) = EMBEDDED
         .iter()
         .find(|(embedded_name, _)| embedded_name.eq_ignore_ascii_case(name))
-        .map(|(_, contents)| *contents)?;
+        .map(|(n, c)| (*n, *c))?;
 
-    Font::from_bytes_latin1(contents).ok()
+    let is_utf8 = UTF8_FONTS
+        .iter()
+        .any(|utf8_name| utf8_name.eq_ignore_ascii_case(embedded_name));
+
+    if is_utf8 {
+        Font::from_bytes_utf8(contents).ok()
+    } else {
+        Font::from_bytes_latin1(contents).ok()
+    }
 }
 
 /// Creates a font stack from a list of font names.
@@ -172,8 +154,7 @@ pub fn default_names() -> &'static [&'static str] {
 /// Returns a list of available font family names.
 ///
 /// Families are themed collections of fonts at different sizes.
-/// Available families: `banner`, `cyber`, `isometric1`, `keyboard`,
-/// `poison`, `script`, `shadow`, `slant`, `tengwar`.
+/// Available families: `banner`, `blocky`, `script`, `slant`.
 pub fn family_names() -> Vec<&'static str> {
     NAMED_SETS.iter().map(|(name, _)| *name).collect()
 }
@@ -188,8 +169,8 @@ pub fn family_names() -> Vec<&'static str> {
 /// ```rust
 /// use artbox::{Renderer, fonts};
 ///
-/// // Use the "cyber" family for a tech aesthetic
-/// let renderer = Renderer::new(fonts::family("cyber").unwrap());
+/// // Use the "blocky" family for a pixel art aesthetic
+/// let renderer = Renderer::new(fonts::family("blocky").unwrap());
 /// ```
 pub fn family(name: &str) -> Option<Vec<Font>> {
     let names = NAMED_SETS
@@ -268,23 +249,23 @@ mod tests {
     fn family_names_returns_all_families() {
         let fam_names = family_names();
         assert_eq!(fam_names.len(), NAMED_SETS.len());
-        assert!(fam_names.contains(&"cyber"));
+        assert!(fam_names.contains(&"blocky"));
         assert!(fam_names.contains(&"banner"));
         assert!(fam_names.contains(&"slant"));
     }
 
     #[test]
     fn family_loads_by_name() {
-        let cyber = family("cyber");
-        assert!(cyber.is_some());
-        let fonts = cyber.unwrap();
+        let blocky = family("blocky");
+        assert!(blocky.is_some());
+        let fonts = blocky.unwrap();
         assert!(!fonts.is_empty());
     }
 
     #[test]
     fn family_case_insensitive() {
-        assert!(family("CYBER").is_some());
-        assert!(family("Cyber").is_some());
+        assert!(family("BLOCKY").is_some());
+        assert!(family("Blocky").is_some());
     }
 
     #[test]
