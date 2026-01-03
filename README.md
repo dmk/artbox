@@ -1,51 +1,111 @@
 # artbox
 
-Render figlet/ASCII text into a fixed rectangle.
+Render FIGlet text into a bounded rectangle with colors and gradients.
 
-## Usage
-
-```rust
-use artbox::{render, Alignment};
-
-fn main() -> Result<(), artbox::RenderError> {
-    let rendered = render("Hello", 40, 10)?;
-    println!("{}", rendered.text);
-    Ok(())
-}
+```
+cargo add artbox
 ```
 
-## Renderer reuse
+## Quick Start
 
 ```rust
-use artbox::{Alignment, Renderer, fonts};
+use artbox::render;
 
-let fonts = fonts::default();
-let renderer = Renderer::new(fonts)
-    .with_plain_fallback()
-    .with_alignment(Alignment::Center)
-    .with_letter_spacing(-1);
-
-let mut out = String::new();
-let metrics = renderer.render_into("Hello", 40, 10, &mut out)?;
+let result = render("Hello", 40, 8)?;
+println!("{}", result.text);
 ```
 
-## Fonts
+Output:
+```
+ _   _      _ _
+| | | | ___| | | ___
+| |_| |/ _ \ | |/ _ \
+|  _  |  __/ | | (_) |
+|_| |_|\___|_|_|\___/
+```
 
-- `Font::from_file`, `Font::from_content`, and `Font::from_bytes_latin1` load `.flf` fonts.
-- `fonts::default()` returns the built-in size stack (`big`, `standard`, `small`, `mini`).
-- `fonts::family("slant")` returns a named family stack (e.g., `slant`, `script`).
-- `fonts::stack(&["big", "small"])` builds a custom stack.
+## Gradients
 
-## ratatui integration
+```rust
+use artbox::{Renderer, Fill, LinearGradient, ColorStop, Color};
 
-Enable the `ratatui` feature and use the widget wrapper:
+let renderer = Renderer::default()
+    .with_fill(Fill::Linear(LinearGradient::new(
+        45.0,
+        vec![
+            ColorStop::new(0.0, Color::rgb(255, 0, 128)),
+            ColorStop::new(1.0, Color::rgb(0, 128, 255)),
+        ],
+    )));
+
+let styled = renderer.render_styled("Hi", 20, 6)?;
+print!("{}", styled.to_ansi_string());
+```
+
+Supports solid colors, linear gradients (any angle), and radial gradients.
+
+## Font Families
+
+Built-in font families with size fallback:
+
+```rust
+use artbox::{Renderer, fonts};
+
+// Blocky pixel style (█▀▄ characters)
+let renderer = Renderer::new(fonts::family("blocky").unwrap());
+
+// Available families: banner, blocky, script, slant
+// Default stack: big -> standard -> small -> mini
+```
+
+Custom stacks:
+
+```rust
+let renderer = Renderer::new(fonts::stack(&["slant", "small_slant"]));
+```
+
+Load external fonts:
+
+```rust
+let font = Font::from_file("path/to/font.flf")?;
+```
+
+## Alignment
+
+```rust
+use artbox::{Renderer, Alignment};
+
+let renderer = Renderer::default()
+    .with_alignment(Alignment::Center)  // or TopLeft, BottomRight, etc.
+    .with_letter_spacing(-1);           // negative = overlap
+```
+
+## Buffer Reuse
+
+For hot paths, reuse the output buffer:
+
+```rust
+let mut buffer = String::new();
+let metrics = renderer.render_into("Text", 40, 10, &mut buffer)?;
+```
+
+## ratatui Widget
+
+Enable the `ratatui` feature:
+
+```toml
+artbox = { version = "0.1", features = ["ratatui"] }
+```
 
 ```rust
 use artbox::integrations::ratatui::ArtBox;
 
 let widget = ArtBox::new(&renderer, "Hello");
+frame.render_widget(widget, area);
 ```
 
-## Features
+## CLI Example
 
-- `ratatui`: enables the widget integration.
+```bash
+cargo run --example gradient -- "Hello" 60 10 --gradient diagonal --from 255,0,128 --to 0,128,255
+```

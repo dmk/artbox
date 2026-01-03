@@ -25,6 +25,8 @@ jobs:
         run: cargo doc --all --no-deps
         env:
           RUSTDOCFLAGS: -D warnings
+      - name: Add redirect
+        run: echo '<meta http-equiv="refresh" content="0;url=artbox/">' > target/doc/index.html
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:

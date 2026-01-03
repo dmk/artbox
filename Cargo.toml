@@ -2,6 +2,12 @@
 name = "artbox"
 version = "0.1.0"
 edition = "2021"
+description = "Render FIGlet text into a bounded rectangle with colors and gradients"
+license = "MIT"
+repository = "https://github.com/dmk/artbox"
+documentation = "https://dmk.github.io/artbox/"
+keywords = ["figlet", "ascii-art", "tui", "ratatui"]
+categories = ["command-line-interface", "text-processing"]
 
 [features]
 default = ["ratatui"]
