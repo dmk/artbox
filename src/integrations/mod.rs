@@ -4,8 +4,8 @@
 //!
 //! ## Available Integrations
 //!
-//! - **`ratatui`** (requires `ratatui` feature): Provides an [`ArtBox`](ratatui::ArtBox)
-//!   widget for rendering ASCII art in terminal UIs.
+//! - **`ratatui`** (requires `ratatui` feature): Provides [`ArtBox`](ratatui::ArtBox)
+//!   and [`SpriteBox`](ratatui::SpriteBox) widgets for rendering text and sprites.
 
 #[cfg(feature = "ratatui")]
 pub mod ratatui;

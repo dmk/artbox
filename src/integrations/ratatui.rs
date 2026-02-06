@@ -23,6 +23,7 @@
 use ratatui::{buffer::Buffer, layout::Rect, style::Style, widgets::Widget};
 
 use crate::color::Rgb;
+use crate::sprites::{Sprite, SpriteSelection};
 use crate::Renderer;
 
 /// A ratatui widget that renders ASCII art text.
@@ -108,6 +109,63 @@ impl Widget for ArtBox<'_> {
                 }
                 buf.set_stringn(area.x, y, line, area.width as usize, Style::default());
                 y += 1;
+            }
+        }
+    }
+}
+
+/// A ratatui widget that renders sprites.
+///
+/// The sprite will auto-select a variant that fits the allocated area unless
+/// a selection override is provided.
+pub struct SpriteBox<'a> {
+    sprite: &'a Sprite<'a>,
+    selection: SpriteSelection<'a>,
+}
+
+impl<'a> SpriteBox<'a> {
+    /// Creates a new SpriteBox widget.
+    pub fn new(sprite: &'a Sprite<'a>) -> Self {
+        Self {
+            sprite,
+            selection: SpriteSelection::Auto,
+        }
+    }
+
+    /// Sets the selection mode (auto, size, or id).
+    pub fn with_selection(mut self, selection: SpriteSelection<'a>) -> Self {
+        self.selection = selection;
+        self
+    }
+}
+
+impl Widget for SpriteBox<'_> {
+    fn render(self, area: Rect, buf: &mut Buffer) {
+        let Ok(rendered) = self
+            .sprite
+            .render_with(area.width, area.height, self.selection)
+        else {
+            return;
+        };
+
+        for (row_idx, row) in rendered.chars.iter().enumerate() {
+            let y = area.y + row_idx as u16;
+            if y >= area.y + area.height {
+                break;
+            }
+
+            for (col_idx, sc) in row.iter().enumerate() {
+                let x = area.x + col_idx as u16;
+                if x >= area.x + area.width {
+                    break;
+                }
+
+                let style = match sc.fg {
+                    Some(rgb) => Style::default().fg(to_ratatui_color(rgb)),
+                    None => Style::default(),
+                };
+
+                buf.set_string(x, y, sc.ch.to_string(), style);
             }
         }
     }

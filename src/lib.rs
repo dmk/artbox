@@ -67,10 +67,15 @@ use unicode_width::UnicodeWidthStr;
 pub mod color;
 pub mod fonts;
 pub mod integrations;
+pub mod sprites;
 mod styled;
 
 pub use color::{Color, ColorStop, Fill, Hsl, LinearGradient, RadialGradient, Rgb};
-pub use styled::StyledRendered;
+pub use sprites::{
+    Sprite, SpriteError, SpriteLayer, SpriteMetrics, SpriteRendered, SpriteSelection, SpriteSize,
+    SpriteVariant,
+};
+pub use styled::{StyledChar, StyledRendered};
 
 /// A font that can be used to render text as ASCII art.
 ///
