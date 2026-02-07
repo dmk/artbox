@@ -20,17 +20,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-      - name: Build docs
-        run: cargo doc --all --no-deps
-        env:
-          RUSTDOCFLAGS: -D warnings
-      - name: Add redirect
-        run: echo '<meta http-equiv="refresh" content="0;url=artbox/">' > target/doc/index.html
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install dependencies
+        run: npm ci
+        working-directory: docs
+      - name: Build site
+        run: npm run build
+        working-directory: docs
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: target/doc
+          path: docs/dist
 
   deploy:
     name: Deploy

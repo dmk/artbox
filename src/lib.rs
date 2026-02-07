@@ -1,9 +1,11 @@
 //! # artbox
 //!
-//! A Rust library for rendering FIGlet/ASCII art text into bounded rectangles.
+//! ASCII art toolkit: FIGlet text, sprites, and image rendering with colors,
+//! gradients, and ratatui integration.
 //!
-//! artbox provides a simple API for rendering text using FIGlet fonts with automatic
-//! font selection based on available space, alignment options, and letter spacing control.
+//! artbox renders text using FIGlet fonts with automatic font selection, layered
+//! sprites with per-layer fills, and image-to-ASCII conversion — all into bounded
+//! rectangles with alignment and color support.
 //!
 //! ## Quick Start
 //!
@@ -37,7 +39,9 @@
 //!
 //! ## Features
 //!
-//! - **`ratatui`** - Enables the `ArtBox` widget for TUI applications.
+//! - **`images`** - Image-to-ASCII conversion and terminal image protocols (kitty, iTerm2).
+//! - **`ratatui`** - `ArtBox` and `SpriteBox` widgets for TUI applications.
+//! - **`cli`** - Enables the `artbox` binary (requires `images`).
 //!
 //! ## Colors and Gradients
 //!
