@@ -66,6 +66,8 @@ use unicode_width::UnicodeWidthStr;
 
 pub mod color;
 pub mod fonts;
+#[cfg(feature = "images")]
+pub mod images;
 pub mod integrations;
 pub mod sprites;
 mod styled;
