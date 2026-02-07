@@ -98,12 +98,12 @@ fn main() {
     // Render
     let result = if renderer.has_fill() {
         renderer
-            .render_styled(&args.text, inner_width, inner_height)
-            .map(|styled| styled.to_ansi_string())
+            .render_grid(&args.text, inner_width, inner_height)
+            .map(|grid| grid.to_ansi_string())
     } else {
         renderer
             .render(&args.text, inner_width, inner_height)
-            .map(|rendered| rendered.text)
+            .map(|rendered| rendered.to_plain_string())
     };
 
     match result {

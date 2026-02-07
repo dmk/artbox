@@ -67,48 +67,31 @@ impl<'a> ArtBox<'a> {
 
 impl Widget for ArtBox<'_> {
     fn render(self, area: Rect, buf: &mut Buffer) {
-        if self.renderer.has_fill() {
-            // Use styled rendering for colored output
-            let Ok(styled) = self
-                .renderer
-                .render_styled(self.text, area.width, area.height)
-            else {
-                return;
-            };
+        let Ok(rendered) = self
+            .renderer
+            .render_grid(self.text, area.width, area.height)
+        else {
+            return;
+        };
 
-            for (row_idx, row) in styled.chars.iter().enumerate() {
-                let y = area.y + row_idx as u16;
-                if y >= area.y + area.height {
-                    break;
-                }
-
-                for (col_idx, sc) in row.iter().enumerate() {
-                    let x = area.x + col_idx as u16;
-                    if x >= area.x + area.width {
-                        break;
-                    }
-
-                    let style = match sc.fg {
-                        Some(rgb) => Style::default().fg(to_ratatui_color(rgb)),
-                        None => Style::default(),
-                    };
-
-                    buf.set_string(x, y, sc.ch.to_string(), style);
-                }
+        for (row_idx, row) in rendered.chars.iter().enumerate() {
+            let y = area.y + row_idx as u16;
+            if y >= area.y + area.height {
+                break;
             }
-        } else {
-            // Use plain rendering (no colors)
-            let Ok(rendered) = self.renderer.render(self.text, area.width, area.height) else {
-                return;
-            };
 
-            let mut y = area.y;
-            for line in rendered.text.lines() {
-                if y >= area.y + area.height {
+            for (col_idx, sc) in row.iter().enumerate() {
+                let x = area.x + col_idx as u16;
+                if x >= area.x + area.width {
                     break;
                 }
-                buf.set_stringn(area.x, y, line, area.width as usize, Style::default());
-                y += 1;
+
+                let style = match sc.fg {
+                    Some(rgb) => Style::default().fg(to_ratatui_color(rgb)),
+                    None => Style::default(),
+                };
+
+                buf.set_string(x, y, sc.ch.to_string(), style);
             }
         }
     }

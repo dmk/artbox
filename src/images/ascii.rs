@@ -9,8 +9,9 @@ use std::path::Path;
 use image::{DynamicImage, GenericImageView};
 
 use crate::color::ANSI_RESET;
+use crate::images::{ImageError, SvgColor, SvgRasterOptions};
 use crate::styled::StyledChar;
-use crate::Rgb;
+use crate::{GridRendered, Rgb};
 
 const ASCII_CHARS: &str =
     " .'`^\",:;Il!i><~+_-?][}{1)(|\\/tfjrxnuvczXYUJCLQ0OZmwqpdbkhao*#MW&8%B@$";
@@ -19,7 +20,7 @@ const BLOCK_CHARS: [char; 16] = [
 ];
 
 /// Rendering modes for ASCII conversion.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum AsciiMode {
     /// Full blocks (`█`) or spaces based on a threshold.
     Full,
@@ -161,6 +162,17 @@ impl AsciiRendered {
     }
 }
 
+impl From<AsciiRendered> for GridRendered {
+    fn from(rendered: AsciiRendered) -> Self {
+        GridRendered {
+            chars: rendered.chars,
+            width: rendered.width,
+            height: rendered.height,
+            font_index: None,
+        }
+    }
+}
+
 /// Metrics about an ASCII render.
 #[derive(Debug, Clone, Copy)]
 pub struct AsciiMetrics {
@@ -205,27 +217,37 @@ impl From<std::io::Error> for AsciiError {
 }
 
 /// Render an image from disk to ASCII.
-pub fn render_path(
+pub fn render_image_path(
     path: impl AsRef<Path>,
     options: &AsciiOptions,
 ) -> Result<AsciiRendered, AsciiError> {
     let path = path.as_ref();
-    let ext = path
-        .extension()
-        .and_then(|e| e.to_str())
-        .unwrap_or_default();
-    if ext.eq_ignore_ascii_case("svg") {
-        let bytes = std::fs::read(path)?;
-        render_svg_bytes(&bytes, options)
-    } else {
-        let image = image::open(path).map_err(AsciiError::Decode)?;
-        render_image(image, options)
-    }
+    let svg_options = SvgRasterOptions {
+        target_width: options.width.saturating_mul(4).max(1),
+        current_color: if options.color {
+            SvgColor::Black
+        } else {
+            SvgColor::White
+        },
+    };
+    let image = super::load_image_from_path(path, Some(svg_options)).map_err(map_image_error)?;
+    render_image(image, options)
 }
 
 /// Render an image from memory to ASCII.
-pub fn render_bytes(bytes: &[u8], options: &AsciiOptions) -> Result<AsciiRendered, AsciiError> {
-    let image = image::load_from_memory(bytes).map_err(AsciiError::Decode)?;
+pub fn render_image_bytes(
+    bytes: &[u8],
+    options: &AsciiOptions,
+) -> Result<AsciiRendered, AsciiError> {
+    let svg_options = SvgRasterOptions {
+        target_width: options.width.saturating_mul(4).max(1),
+        current_color: if options.color {
+            SvgColor::Black
+        } else {
+            SvgColor::White
+        },
+    };
+    let image = super::load_image_from_bytes(bytes, Some(svg_options)).map_err(map_image_error)?;
     render_image(image, options)
 }
 
@@ -266,43 +288,59 @@ pub fn render_image(
     Ok(rendered)
 }
 
-fn render_svg_bytes(bytes: &[u8], options: &AsciiOptions) -> Result<AsciiRendered, AsciiError> {
-    let svg_str = std::str::from_utf8(bytes)
-        .map_err(|err| AsciiError::Svg(format!("invalid utf-8 svg: {err}")))?;
-    let replacement = if options.color { "black" } else { "white" };
-    let svg_str = svg_str.replace("currentColor", replacement);
-    let bytes = svg_str.as_bytes();
+/// Render a decoded image to ASCII using an explicit target size.
+///
+/// This bypasses the automatic size calculation in [`render_image`], which is
+/// useful when the caller already controls rasterization.
+pub fn render_image_at_size(
+    image: DynamicImage,
+    options: &AsciiOptions,
+    target_width: u32,
+    target_height: u32,
+) -> Result<AsciiRendered, AsciiError> {
+    if options.width == 0 {
+        return Err(AsciiError::EmptyWidth);
+    }
+    if target_width == 0 || target_height == 0 {
+        return Err(AsciiError::EmptyWidth);
+    }
 
-    let target_width = (options.width as f32 * 4.0).round().max(1.0) as u32;
-    let image = render_svg_to_image(bytes, target_width)?;
-    render_image(image, options)
-}
+    let (rgb, alpha) = split_alpha(&image);
 
-fn render_svg_to_image(bytes: &[u8], target_width: u32) -> Result<DynamicImage, AsciiError> {
-    let mut opt = resvg::usvg::Options::default();
-    opt.fontdb_mut().load_system_fonts();
-
-    let tree = resvg::usvg::Tree::from_data(bytes, &opt)
-        .map_err(|err| AsciiError::Svg(err.to_string()))?;
-
-    let size = tree.size();
-    let scale = target_width as f32 / size.width();
-    let target_height = (size.height() * scale).round().max(1.0) as u32;
-
-    let mut pixmap = resvg::tiny_skia::Pixmap::new(target_width, target_height)
-        .ok_or_else(|| AsciiError::Svg("failed to allocate pixmap for svg".to_string()))?;
-
-    let mut pixmap_mut = pixmap.as_mut();
-    resvg::render(
-        &tree,
-        resvg::tiny_skia::Transform::from_scale(scale, scale),
-        &mut pixmap_mut,
+    let adjusted = apply_adjustments(DynamicImage::ImageRgb8(rgb), options);
+    let resized_rgb = image::imageops::resize(
+        &adjusted.to_rgb8(),
+        target_width,
+        target_height,
+        image::imageops::FilterType::Triangle,
+    );
+    let resized_alpha = image::imageops::resize(
+        &alpha,
+        target_width,
+        target_height,
+        image::imageops::FilterType::Triangle,
     );
 
-    let image = image::RgbaImage::from_raw(pixmap.width(), pixmap.height(), pixmap.data().to_vec())
-        .ok_or_else(|| AsciiError::Svg("failed to build rgba buffer from svg".to_string()))?;
+    let rgba = merge_alpha(&resized_rgb, &resized_alpha);
+    let rendered = match options.mode {
+        AsciiMode::Full => render_full(&rgba, options),
+        AsciiMode::Shade => render_shade(&rgba, options),
+        AsciiMode::Ascii => render_ascii(&rgba, options),
+        AsciiMode::Block => render_block(&rgba, options),
+    };
 
-    Ok(DynamicImage::ImageRgba8(image))
+    Ok(rendered)
+}
+
+fn map_image_error(err: ImageError) -> AsciiError {
+    match err {
+        ImageError::Io(err) => AsciiError::Io(err),
+        ImageError::Decode(err) => AsciiError::Decode(err),
+        ImageError::Svg(err) => AsciiError::Svg(err),
+        // Encode and UnsupportedTerminal are not reachable from load_image_*
+        // but we handle them gracefully via Display.
+        other => AsciiError::Svg(other.to_string()),
+    }
 }
 
 fn target_dimensions(image: &DynamicImage, options: &AsciiOptions) -> (u32, u32) {
@@ -310,10 +348,15 @@ fn target_dimensions(image: &DynamicImage, options: &AsciiOptions) -> (u32, u32)
     let aspect_ratio = h as f32 / w as f32;
 
     let base_width = options.width as f32;
-    let target_width = (base_width * options.h_scale).round().max(1.0) as u32;
-    let target_height = (aspect_ratio * base_width * 0.5 * options.v_scale)
+    let mut target_width = (base_width * options.h_scale).round().max(1.0) as u32;
+    let mut target_height = (aspect_ratio * base_width * 0.5 * options.v_scale)
         .round()
         .max(1.0) as u32;
+
+    if matches!(options.mode, AsciiMode::Block) {
+        target_width = target_width.saturating_mul(2).max(1);
+        target_height = target_height.saturating_mul(2).max(1);
+    }
 
     (target_width, target_height)
 }
@@ -643,7 +686,7 @@ mod tests {
             mode: AsciiMode::Block,
             threshold: 128,
             color: false,
-            width: 2,
+            width: 1,
             v_scale: 2.0,
             ..AsciiOptions::default()
         };

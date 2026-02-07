@@ -24,3 +24,5 @@ resvg = { version = "0.43", optional = true }
 clap = { version = "4.5.23", features = ["derive"] }
 
 [dev-dependencies]
+tui-dispatch = "0.5.4"
+crossterm = "0.28"

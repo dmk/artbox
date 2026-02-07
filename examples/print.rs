@@ -44,7 +44,10 @@ fn main() {
     let art = renderer.render(&args.text, inner_width, inner_height);
 
     match art {
-        Ok(rendered) => print_with_border(&rendered.text, inner_width, inner_height),
+        Ok(rendered) => {
+            let output = rendered.to_plain_string();
+            print_with_border(&output, inner_width, inner_height)
+        }
         Err(err) => {
             eprintln!("Render error: {err}");
             std::process::exit(1);

@@ -12,7 +12,7 @@
 //!
 //! // Simple rendering with defaults
 //! let result = render("Hello", 40, 10).unwrap();
-//! println!("{}", result.text);
+//! println!("{}", result.to_plain_string());
 //!
 //! // Custom renderer with alignment
 //! let renderer = Renderer::default()
@@ -55,7 +55,7 @@
 //!         ],
 //!     }));
 //!
-//! let styled = renderer.render_styled("Hi", 20, 5).unwrap();
+//! let styled = renderer.render_grid("Hi", 20, 5).unwrap();
 //! println!("{}", styled.to_ansi_string());
 //! ```
 
@@ -77,7 +77,129 @@ pub use sprites::{
     Sprite, SpriteError, SpriteLayer, SpriteMetrics, SpriteRendered, SpriteSelection, SpriteSize,
     SpriteVariant,
 };
-pub use styled::{StyledChar, StyledRendered};
+pub use styled::{GridRendered, StyledChar};
+
+/// A shared render target for text, sprites, and images.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct RenderTarget {
+    pub width: u16,
+    pub height: u16,
+}
+
+impl RenderTarget {
+    pub fn new(width: u16, height: u16) -> Self {
+        Self { width, height }
+    }
+}
+
+/// Lightweight text-only render result.
+///
+/// Contains the rendered text as a plain string with alignment padding applied,
+/// without per-character color information. This is produced by [`Renderer::render`]
+/// when no [`Fill`] is configured.
+#[derive(Debug, Clone)]
+pub struct TextRendered {
+    /// The rendered text with alignment padding.
+    pub text: String,
+    /// Width of the content before alignment padding.
+    pub width: u16,
+    /// Height of the content before alignment padding.
+    pub height: u16,
+    /// Index of the font that was used from the renderer's font stack.
+    pub font_index: Option<usize>,
+}
+
+impl TextRendered {
+    /// Returns the text as a plain string.
+    pub fn to_plain_string(&self) -> String {
+        self.text.clone()
+    }
+
+    /// Returns the text as-is (no colors to apply).
+    pub fn to_ansi_string(&self) -> String {
+        self.text.clone()
+    }
+
+    /// Returns the metrics for this rendered result.
+    pub fn metrics(&self) -> RenderMetrics {
+        RenderMetrics {
+            width: self.width,
+            height: self.height,
+            font_index: self.font_index,
+        }
+    }
+}
+
+/// Unified render output for text, sprites, and images.
+#[derive(Debug, Clone)]
+pub enum Rendered {
+    /// Lightweight text output (no per-character colors).
+    Text(TextRendered),
+    /// Grid-based output with per-character styling (text, sprites, ASCII images).
+    Grid(GridRendered),
+    /// Terminal image output (kitty/iTerm2) with optional grid fallback.
+    #[cfg(feature = "images")]
+    TerminalImage {
+        /// The terminal image escape sequence.
+        image: images::TerminalImage,
+        /// Optional grid fallback for non-terminal contexts.
+        fallback: Option<Box<GridRendered>>,
+    },
+}
+
+impl Rendered {
+    /// Converts to an ANSI-colored string for terminal output.
+    pub fn to_ansi_string(&self) -> String {
+        match self {
+            Rendered::Text(text) => text.to_ansi_string(),
+            Rendered::Grid(grid) => grid.to_ansi_string(),
+            #[cfg(feature = "images")]
+            Rendered::TerminalImage { image, .. } => image.as_str().to_string(),
+        }
+    }
+
+    /// Converts to a plain string without any escape codes.
+    ///
+    /// For terminal images, returns the fallback grid's plain string if a
+    /// fallback was provided, otherwise returns an empty string.
+    pub fn to_plain_string(&self) -> String {
+        match self {
+            Rendered::Text(text) => text.to_plain_string(),
+            Rendered::Grid(grid) => grid.to_plain_string(),
+            #[cfg(feature = "images")]
+            Rendered::TerminalImage { fallback, .. } => fallback
+                .as_ref()
+                .map(|fb| fb.to_plain_string())
+                .unwrap_or_default(),
+        }
+    }
+
+    /// Returns metrics about the rendered content, if available.
+    pub fn metrics(&self) -> Option<RenderMetrics> {
+        match self {
+            Rendered::Text(text) => Some(text.metrics()),
+            Rendered::Grid(grid) => Some(grid.metrics()),
+            #[cfg(feature = "images")]
+            Rendered::TerminalImage { fallback, .. } => fallback.as_ref().map(|fb| fb.metrics()),
+        }
+    }
+
+    /// Attaches a grid fallback to a terminal image result.
+    ///
+    /// The fallback is used by [`to_plain_string`](Self::to_plain_string) when
+    /// the output context doesn't support terminal image protocols.
+    /// Has no effect on `Text` or `Grid` variants.
+    #[cfg(feature = "images")]
+    pub fn with_fallback(self, fallback: GridRendered) -> Self {
+        match self {
+            Rendered::TerminalImage { image, .. } => Rendered::TerminalImage {
+                image,
+                fallback: Some(Box::new(fallback)),
+            },
+            other => other,
+        }
+    }
+}
 
 /// A font that can be used to render text as ASCII art.
 ///
@@ -350,10 +472,9 @@ impl Renderer {
         self.fill.as_ref()
     }
 
-    /// Renders text into a new string buffer.
+    /// Renders text into a grid output.
     ///
-    /// Returns the rendered text with alignment padding applied, along with
-    /// metrics about the content dimensions and which font was used.
+    /// Returns a grid of styled characters with alignment padding applied.
     ///
     /// # Errors
     ///
@@ -361,15 +482,59 @@ impl Renderer {
     /// - `width` or `height` is zero ([`RenderError::EmptyBounds`])
     /// - No fonts are configured ([`RenderError::EmptyFonts`])
     /// - No font produces output that fits ([`RenderError::NoFit`])
-    pub fn render(&self, text: &str, width: u16, height: u16) -> Result<Rendered, RenderError> {
+    pub fn render_grid(
+        &self,
+        text: &str,
+        width: u16,
+        height: u16,
+    ) -> Result<GridRendered, RenderError> {
         let mut buffer = String::new();
         let metrics = self.render_into(text, width, height, &mut buffer)?;
-        Ok(Rendered {
-            text: buffer,
-            width: metrics.width,
-            height: metrics.height,
-            font_index: metrics.font_index,
-        })
+        let font_index = metrics.font_index.unwrap_or(0);
+
+        let grid = if let Some(fill) = &self.fill {
+            styled::apply_fill(
+                &buffer,
+                fill,
+                width,
+                height,
+                metrics.width,
+                metrics.height,
+                font_index,
+            )
+        } else {
+            styled::apply_plain(
+                &buffer,
+                width,
+                height,
+                metrics.width,
+                metrics.height,
+                font_index,
+            )
+        };
+
+        Ok(grid)
+    }
+
+    /// Renders text and wraps the result in the unified output type.
+    ///
+    /// When no [`Fill`] is configured, this returns a lightweight
+    /// [`Rendered::Text`] without building a per-character grid. When a fill
+    /// is set, it returns [`Rendered::Grid`] with color information.
+    pub fn render(&self, text: &str, width: u16, height: u16) -> Result<Rendered, RenderError> {
+        if self.fill.is_some() {
+            let grid = self.render_grid(text, width, height)?;
+            Ok(Rendered::Grid(grid))
+        } else {
+            let mut buffer = String::new();
+            let metrics = self.render_into(text, width, height, &mut buffer)?;
+            Ok(Rendered::Text(TextRendered {
+                text: buffer,
+                width: metrics.width,
+                height: metrics.height,
+                font_index: metrics.font_index,
+            }))
+        }
     }
 
     /// Renders text into an existing string buffer.
@@ -403,72 +568,13 @@ impl Renderer {
                     return Ok(RenderMetrics {
                         width: content_width as u16,
                         height: content_height as u16,
-                        font_index: index,
+                        font_index: Some(index),
                     });
                 }
             }
         }
 
         Err(RenderError::NoFit)
-    }
-
-    /// Renders text with colors applied, returning a styled character grid.
-    ///
-    /// This method is similar to [`Renderer::render`] but produces a
-    /// [`StyledRendered`] with per-character color information based on
-    /// the configured [`Fill`].
-    ///
-    /// If no fill is configured, characters will have no color (plain text).
-    ///
-    /// # Errors
-    ///
-    /// Same error conditions as [`Renderer::render`].
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// use artbox::{Renderer, Fill, Color};
-    ///
-    /// let renderer = Renderer::default()
-    ///     .with_fill(Fill::solid(Color::rgb(255, 0, 0)));
-    ///
-    /// let styled = renderer.render_styled("Hi", 20, 5)?;
-    /// println!("{}", styled.to_ansi_string());
-    /// # Ok::<(), artbox::RenderError>(())
-    /// ```
-    pub fn render_styled(
-        &self,
-        text: &str,
-        width: u16,
-        height: u16,
-    ) -> Result<StyledRendered, RenderError> {
-        // First render to plain text
-        let rendered = self.render(text, width, height)?;
-
-        // Apply fill if configured
-        let styled = if let Some(fill) = &self.fill {
-            styled::apply_fill(
-                &rendered.text,
-                fill,
-                width,
-                height,
-                rendered.width,
-                rendered.height,
-                rendered.font_index,
-            )
-        } else {
-            // No fill - create plain styled output with no colors
-            styled::apply_plain(
-                &rendered.text,
-                width,
-                height,
-                rendered.width,
-                rendered.height,
-                rendered.font_index,
-            )
-        };
-
-        Ok(styled)
     }
 }
 
@@ -480,6 +586,199 @@ impl Default for Renderer {
     }
 }
 
+/// Unified error type for all artbox operations.
+#[derive(Debug)]
+pub enum Error {
+    /// Text rendering error.
+    Render(RenderError),
+    /// Sprite rendering error.
+    Sprite(SpriteError),
+    /// Image rendering error.
+    #[cfg(feature = "images")]
+    Image(images::ImageRenderError),
+}
+
+impl std::fmt::Display for Error {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Error::Render(err) => write!(f, "{err}"),
+            Error::Sprite(err) => write!(f, "{err}"),
+            #[cfg(feature = "images")]
+            Error::Image(err) => write!(f, "{err}"),
+        }
+    }
+}
+
+impl std::error::Error for Error {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            Error::Render(err) => Some(err),
+            Error::Sprite(err) => Some(err),
+            #[cfg(feature = "images")]
+            Error::Image(err) => Some(err),
+        }
+    }
+}
+
+impl From<RenderError> for Error {
+    fn from(err: RenderError) -> Self {
+        Error::Render(err)
+    }
+}
+
+impl From<SpriteError> for Error {
+    fn from(err: SpriteError) -> Self {
+        Error::Sprite(err)
+    }
+}
+
+#[cfg(feature = "images")]
+impl From<images::ImageRenderError> for Error {
+    fn from(err: images::ImageRenderError) -> Self {
+        Error::Image(err)
+    }
+}
+
+/// Unified entrypoint for text, sprite, and image rendering.
+///
+/// This type wraps a [`Renderer`] and adds consistent APIs for sprites and
+/// images using [`RenderTarget`]. All methods return [`Result<Rendered, Error>`].
+#[derive(Clone)]
+pub struct Artbox {
+    renderer: Renderer,
+    #[cfg(feature = "images")]
+    image_output: images::ImageOutput,
+    #[cfg(feature = "images")]
+    image_ascii: images::ascii::AsciiOptions,
+    #[cfg(feature = "images")]
+    image_terminal: images::TerminalImageConfig,
+}
+
+impl Artbox {
+    pub fn new(fonts: Vec<Font>) -> Self {
+        Self {
+            renderer: Renderer::new(fonts),
+            #[cfg(feature = "images")]
+            image_output: images::ImageOutput::default(),
+            #[cfg(feature = "images")]
+            image_ascii: images::ascii::AsciiOptions::default(),
+            #[cfg(feature = "images")]
+            image_terminal: images::TerminalImageConfig::default(),
+        }
+    }
+
+    pub fn from_renderer(renderer: Renderer) -> Self {
+        Self {
+            renderer,
+            #[cfg(feature = "images")]
+            image_output: images::ImageOutput::default(),
+            #[cfg(feature = "images")]
+            image_ascii: images::ascii::AsciiOptions::default(),
+            #[cfg(feature = "images")]
+            image_terminal: images::TerminalImageConfig::default(),
+        }
+    }
+
+    /// Returns a reference to the underlying renderer.
+    pub fn renderer(&self) -> &Renderer {
+        &self.renderer
+    }
+
+    pub fn with_plain_fallback(mut self) -> Self {
+        self.renderer = self.renderer.with_plain_fallback();
+        self
+    }
+
+    pub fn with_alignment(mut self, alignment: Alignment) -> Self {
+        self.renderer = self.renderer.with_alignment(alignment);
+        self
+    }
+
+    pub fn with_letter_spacing(mut self, letter_spacing: i16) -> Self {
+        self.renderer = self.renderer.with_letter_spacing(letter_spacing);
+        self
+    }
+
+    pub fn with_fill(mut self, fill: Fill) -> Self {
+        self.renderer = self.renderer.with_fill(fill);
+        self
+    }
+
+    pub fn render_text(&self, text: &str, target: RenderTarget) -> Result<Rendered, Error> {
+        self.renderer
+            .render(text, target.width, target.height)
+            .map_err(Error::Render)
+    }
+
+    pub fn render_sprite(
+        &self,
+        sprite: &Sprite<'_>,
+        target: RenderTarget,
+        selection: SpriteSelection<'_>,
+    ) -> Result<Rendered, Error> {
+        let rendered = sprite
+            .render_with(target.width, target.height, selection)
+            .map_err(Error::Sprite)?;
+        Ok(Rendered::Grid(GridRendered::from(rendered)))
+    }
+
+    #[cfg(feature = "images")]
+    pub fn with_image_output(mut self, output: images::ImageOutput) -> Self {
+        self.image_output = output;
+        self
+    }
+
+    #[cfg(feature = "images")]
+    pub fn with_image_ascii_options(mut self, options: images::ascii::AsciiOptions) -> Self {
+        self.image_ascii = options;
+        self
+    }
+
+    #[cfg(feature = "images")]
+    pub fn with_image_terminal_config(mut self, config: images::TerminalImageConfig) -> Self {
+        self.image_terminal = config;
+        self
+    }
+
+    #[cfg(feature = "images")]
+    pub fn render_image_path(
+        &self,
+        path: impl AsRef<std::path::Path>,
+        target: RenderTarget,
+    ) -> Result<Rendered, Error> {
+        images::render_image_auto_path(
+            path,
+            target,
+            self.image_output,
+            &self.image_ascii,
+            self.image_terminal,
+        )
+        .map_err(Error::Image)
+    }
+
+    #[cfg(feature = "images")]
+    pub fn render_image_bytes(
+        &self,
+        bytes: &[u8],
+        target: RenderTarget,
+    ) -> Result<Rendered, Error> {
+        images::render_image_auto_bytes(
+            bytes,
+            target,
+            self.image_output,
+            &self.image_ascii,
+            self.image_terminal,
+        )
+        .map_err(Error::Image)
+    }
+}
+
+impl Default for Artbox {
+    fn default() -> Self {
+        Self::from_renderer(Renderer::default())
+    }
+}
+
 /// Renders text using the default renderer.
 ///
 /// This is a convenience function equivalent to `Renderer::default().render(text, width, height)`.
@@ -488,38 +787,11 @@ impl Default for Renderer {
 ///
 /// ```rust
 /// let result = artbox::render("Hi", 20, 5)?;
-/// println!("{}", result.text);
+/// println!("{}", result.to_plain_string());
 /// # Ok::<(), artbox::RenderError>(())
 /// ```
 pub fn render(text: &str, width: u16, height: u16) -> Result<Rendered, RenderError> {
     Renderer::default().render(text, width, height)
-}
-
-/// The result of a successful render operation.
-///
-/// Contains the rendered text with alignment padding applied, along with
-/// metrics about the original content dimensions.
-#[derive(Debug, Clone)]
-pub struct Rendered {
-    /// The rendered ASCII art text with alignment padding.
-    pub text: String,
-    /// Width of the content before alignment padding was applied.
-    pub width: u16,
-    /// Height of the content before alignment padding was applied.
-    pub height: u16,
-    /// Index of the font that was used from the renderer's font stack.
-    pub font_index: usize,
-}
-
-impl Rendered {
-    /// Extracts just the metrics from this rendered result.
-    pub fn metrics(&self) -> RenderMetrics {
-        RenderMetrics {
-            width: self.width,
-            height: self.height,
-            font_index: self.font_index,
-        }
-    }
 }
 
 /// Metrics about a rendered result without the text content.
@@ -533,7 +805,7 @@ pub struct RenderMetrics {
     /// Height of the rendered content (before alignment padding).
     pub height: u16,
     /// Index of the font that was used from the renderer's font stack.
-    pub font_index: usize,
+    pub font_index: Option<usize>,
 }
 
 /// Errors that can occur during rendering.
@@ -986,12 +1258,14 @@ mod tests {
 
         // Large bounds should use first font (index 0)
         let result = renderer.render("A", 100, 20).unwrap();
-        assert_eq!(result.font_index, 0);
+        let metrics = result.metrics().unwrap();
+        assert_eq!(metrics.font_index, Some(0));
 
         // Smaller bounds should fall back to mini (index 1)
         // mini font renders "A" in about 4x2
         let result = renderer.render("A", 15, 5).unwrap();
-        assert_eq!(result.font_index, 1);
+        let metrics = result.metrics().unwrap();
+        assert_eq!(metrics.font_index, Some(1));
     }
 
     // ==================== Alignment Tests ====================
@@ -1000,7 +1274,8 @@ mod tests {
     fn alignment_top_left() {
         let renderer = Renderer::new(vec![Font::plain()]).with_alignment(Alignment::TopLeft);
         let result = renderer.render("X", 5, 3).unwrap();
-        let lines: Vec<&str> = result.text.lines().collect();
+        let output = result.to_plain_string();
+        let lines: Vec<&str> = output.lines().collect();
         assert_eq!(lines.len(), 3);
         assert!(lines[0].starts_with("X"));
     }
@@ -1009,7 +1284,8 @@ mod tests {
     fn alignment_bottom_right() {
         let renderer = Renderer::new(vec![Font::plain()]).with_alignment(Alignment::BottomRight);
         let result = renderer.render("X", 5, 3).unwrap();
-        let lines: Vec<&str> = result.text.lines().collect();
+        let output = result.to_plain_string();
+        let lines: Vec<&str> = output.lines().collect();
         assert_eq!(lines.len(), 3);
         assert!(lines[2].ends_with("X"));
     }
@@ -1018,7 +1294,8 @@ mod tests {
     fn alignment_center() {
         let renderer = Renderer::new(vec![Font::plain()]).with_alignment(Alignment::Center);
         let result = renderer.render("X", 5, 3).unwrap();
-        let lines: Vec<&str> = result.text.lines().collect();
+        let output = result.to_plain_string();
+        let lines: Vec<&str> = output.lines().collect();
         // Middle line (index 1) should contain X
         assert!(lines[1].contains("X"));
     }
@@ -1086,7 +1363,7 @@ mod tests {
         let renderer = Renderer::new(vec![Font::plain()]).with_letter_spacing(2);
         let result = renderer.render("AB", 20, 1).unwrap();
         // Should have extra spacing
-        assert!(result.text.contains("  "));
+        assert!(result.to_plain_string().contains("  "));
     }
 
     // ==================== Measure Rendered Tests ====================
@@ -1168,16 +1445,16 @@ mod tests {
 
     #[test]
     fn rendered_metrics() {
-        let rendered = Rendered {
-            text: String::from("test"),
+        let rendered = GridRendered {
+            chars: vec![vec![StyledChar::plain('X')]],
             width: 10,
             height: 5,
-            font_index: 2,
+            font_index: Some(2),
         };
         let metrics = rendered.metrics();
         assert_eq!(metrics.width, 10);
         assert_eq!(metrics.height, 5);
-        assert_eq!(metrics.font_index, 2);
+        assert_eq!(metrics.font_index, Some(2));
     }
 
     // ==================== Error Display Tests ====================
@@ -1209,7 +1486,8 @@ mod tests {
     fn aligned_output_fills_bounds() {
         let renderer = Renderer::new(vec![Font::plain()]).with_alignment(Alignment::Center);
         let result = renderer.render("X", 10, 5).unwrap();
-        let lines: Vec<&str> = result.text.lines().collect();
+        let output = result.to_plain_string();
+        let lines: Vec<&str> = output.lines().collect();
         assert_eq!(lines.len(), 5);
         for line in &lines {
             assert_eq!(line.len(), 10);
@@ -1240,10 +1518,10 @@ mod tests {
     }
 
     #[test]
-    fn render_styled_with_solid_fill() {
+    fn render_grid_with_solid_fill() {
         let renderer =
             Renderer::new(vec![Font::plain()]).with_fill(Fill::solid(Color::rgb(255, 0, 0)));
-        let styled = renderer.render_styled("AB", 5, 1).unwrap();
+        let styled = renderer.render_grid("AB", 5, 1).unwrap();
 
         // Should have colored chars
         assert_eq!(styled.chars.len(), 1);
@@ -1255,9 +1533,9 @@ mod tests {
     }
 
     #[test]
-    fn render_styled_without_fill() {
+    fn render_grid_without_fill() {
         let renderer = Renderer::new(vec![Font::plain()]);
-        let styled = renderer.render_styled("X", 5, 1).unwrap();
+        let styled = renderer.render_grid("X", 5, 1).unwrap();
 
         // Should produce output with no colors (fg = None)
         assert_eq!(styled.chars.len(), 1);
@@ -1280,10 +1558,10 @@ mod tests {
     }
 
     #[test]
-    fn render_styled_to_ansi_string() {
+    fn render_grid_to_ansi_string() {
         let renderer =
             Renderer::new(vec![Font::plain()]).with_fill(Fill::solid(Color::rgb(255, 128, 64)));
-        let styled = renderer.render_styled("X", 5, 1).unwrap();
+        let styled = renderer.render_grid("X", 5, 1).unwrap();
         let ansi = styled.to_ansi_string();
 
         // Should contain ANSI color codes
@@ -1292,10 +1570,10 @@ mod tests {
     }
 
     #[test]
-    fn render_styled_to_plain_string() {
+    fn render_grid_to_plain_string() {
         let renderer =
             Renderer::new(vec![Font::plain()]).with_fill(Fill::solid(Color::rgb(255, 0, 0)));
-        let styled = renderer.render_styled("Hi", 5, 1).unwrap();
+        let styled = renderer.render_grid("Hi", 5, 1).unwrap();
         let plain = styled.to_plain_string();
 
         // Should not contain ANSI codes
@@ -1304,11 +1582,11 @@ mod tests {
     }
 
     #[test]
-    fn render_styled_with_gradient() {
+    fn render_grid_with_gradient() {
         let renderer = Renderer::new(vec![Font::plain()]).with_fill(Fill::Linear(
             LinearGradient::horizontal(Color::rgb(0, 0, 0), Color::rgb(255, 255, 255)),
         ));
-        let styled = renderer.render_styled("ABCD", 4, 1).unwrap();
+        let styled = renderer.render_grid("ABCD", 4, 1).unwrap();
 
         // Colors should vary across the row
         let first = styled.chars[0][0].fg.unwrap();
@@ -1318,14 +1596,14 @@ mod tests {
     }
 
     #[test]
-    fn render_styled_metrics() {
+    fn render_grid_metrics() {
         let renderer =
             Renderer::new(vec![Font::plain()]).with_fill(Fill::solid(Color::rgb(0, 0, 0)));
-        let styled = renderer.render_styled("AB", 10, 5).unwrap();
+        let styled = renderer.render_grid("AB", 10, 5).unwrap();
         let metrics = styled.metrics();
 
         assert_eq!(metrics.width, 2);
         assert_eq!(metrics.height, 1);
-        assert_eq!(metrics.font_index, 0);
+        assert_eq!(metrics.font_index, Some(0));
     }
 }

@@ -34,7 +34,8 @@ __pycache__/
 
 # mdBook build output
 docs/book/
+docs/node_modules/
+docs/dist/
 
 # other stuff
 misc/
-

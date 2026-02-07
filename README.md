@@ -12,7 +12,7 @@ cargo add artbox
 use artbox::render;
 
 let result = render("Hello", 40, 8)?;
-println!("{}", result.text);
+println!("{}", result.to_plain_string());
 ```
 
 Output:
@@ -102,6 +102,18 @@ use artbox::integrations::ratatui::ArtBox;
 
 let widget = ArtBox::new(&renderer, "Hello");
 frame.render_widget(widget, area);
+```
+
+## Docs
+
+Hosted docs: https://dmk.github.io/artbox
+
+Local docs:
+
+```bash
+cd docs
+npm install
+npm run dev
 ```
 
 ## CLI Example

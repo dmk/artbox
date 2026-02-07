@@ -30,7 +30,7 @@
 use std::borrow::Cow;
 
 use crate::styled::StyledChar;
-use crate::{Alignment, Color, Rgb};
+use crate::{Alignment, Color, GridRendered, Rgb};
 
 /// A single sprite layer with optional color.
 #[derive(Debug, Clone)]
@@ -295,6 +295,17 @@ impl SpriteRendered {
         SpriteMetrics {
             width: self.width,
             height: self.height,
+        }
+    }
+}
+
+impl From<SpriteRendered> for GridRendered {
+    fn from(rendered: SpriteRendered) -> Self {
+        GridRendered {
+            chars: rendered.chars,
+            width: rendered.width,
+            height: rendered.height,
+            font_index: None,
         }
     }
 }

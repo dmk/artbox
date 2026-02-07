@@ -31,11 +31,11 @@ impl StyledChar {
     }
 }
 
-/// The result of a styled render operation.
+/// The result of a render operation that yields a styled character grid.
 ///
 /// Contains a 2D grid of styled characters with per-character color information.
 #[derive(Debug, Clone)]
-pub struct StyledRendered {
+pub struct GridRendered {
     /// 2D grid of styled characters (rows of columns).
     pub chars: Vec<Vec<StyledChar>>,
     /// Width of the content before alignment padding.
@@ -43,10 +43,10 @@ pub struct StyledRendered {
     /// Height of the content before alignment padding.
     pub height: u16,
     /// Index of the font that was used from the renderer's font stack.
-    pub font_index: usize,
+    pub font_index: Option<usize>,
 }
 
-impl StyledRendered {
+impl GridRendered {
     /// Converts to an ANSI-colored string for terminal output.
     ///
     /// Uses 24-bit true color escape sequences (`\x1b[38;2;R;G;Bm`).
@@ -117,7 +117,7 @@ pub fn apply_plain(
     content_width: u16,
     content_height: u16,
     font_index: usize,
-) -> StyledRendered {
+) -> GridRendered {
     let lines: Vec<&str> = text.lines().collect();
     let mut chars = Vec::with_capacity(lines.len());
 
@@ -137,11 +137,11 @@ pub fn apply_plain(
         chars.push(vec![StyledChar::plain(' '); box_width as usize]);
     }
 
-    StyledRendered {
+    GridRendered {
         chars,
         width: content_width,
         height: content_height,
-        font_index,
+        font_index: Some(font_index),
     }
 }
 
@@ -157,7 +157,7 @@ pub fn apply_fill(
     content_width: u16,
     content_height: u16,
     font_index: usize,
-) -> StyledRendered {
+) -> GridRendered {
     let lines: Vec<&str> = text.lines().collect();
     let mut chars = Vec::with_capacity(lines.len());
 
@@ -205,11 +205,11 @@ pub fn apply_fill(
         chars.push(row);
     }
 
-    StyledRendered {
+    GridRendered {
         chars,
         width: content_width,
         height: content_height,
-        font_index,
+        font_index: Some(font_index),
     }
 }
 
@@ -241,11 +241,11 @@ mod tests {
             ],
             vec![StyledChar::plain(' '), StyledChar::plain(' ')],
         ];
-        let rendered = StyledRendered {
+        let rendered = GridRendered {
             chars,
             width: 2,
             height: 2,
-            font_index: 0,
+            font_index: Some(0),
         };
         assert_eq!(rendered.to_plain_string(), "Hi\n  ");
     }
@@ -253,11 +253,11 @@ mod tests {
     #[test]
     fn to_ansi_string_has_color_codes() {
         let chars = vec![vec![StyledChar::colored('X', Rgb::new(255, 0, 0))]];
-        let rendered = StyledRendered {
+        let rendered = GridRendered {
             chars,
             width: 1,
             height: 1,
-            font_index: 0,
+            font_index: Some(0),
         };
         let ansi = rendered.to_ansi_string();
         assert!(ansi.contains("\x1b[38;2;255;0;0m"));

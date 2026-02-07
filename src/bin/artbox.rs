@@ -76,7 +76,7 @@ fn main() {
 
 #[cfg(feature = "images")]
 fn run_image(args: ImageArgs) {
-    use artbox::images::ascii::{render_path, AsciiMode, AsciiOptions};
+    use artbox::images::ascii::{render_image_path, AsciiMode, AsciiOptions};
 
     let mode = match args.mode {
         ModeArg::Full => AsciiMode::Full,
@@ -108,7 +108,7 @@ fn run_image(args: ImageArgs) {
         alpha_threshold: 128,
     };
 
-    let rendered = match render_path(&args.image, &options) {
+    let rendered = match render_image_path(&args.image, &options) {
         Ok(rendered) => rendered,
         Err(err) => {
             eprintln!("Error: {err}");
