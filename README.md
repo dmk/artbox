@@ -124,7 +124,7 @@ let metrics = renderer.render_into("Text", 40, 10, &mut buffer)?;
 Enable the `images` feature for image-to-ASCII and terminal image protocols:
 
 ```toml
-artbox = { version = "0.1", features = ["images"] }
+artbox = { version = "0.2", features = ["images"] }
 ```
 
 ```rust
@@ -141,7 +141,7 @@ print!("{}", rendered.to_ansi_string());
 Enable the `ratatui` feature:
 
 ```toml
-artbox = { version = "0.1", features = ["ratatui"] }
+artbox = { version = "0.2", features = ["ratatui"] }
 ```
 
 ```rust
