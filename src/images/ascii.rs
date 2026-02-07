@@ -269,7 +269,8 @@ pub fn render_image(
 fn render_svg_bytes(bytes: &[u8], options: &AsciiOptions) -> Result<AsciiRendered, AsciiError> {
     let svg_str = std::str::from_utf8(bytes)
         .map_err(|err| AsciiError::Svg(format!("invalid utf-8 svg: {err}")))?;
-    let svg_str = svg_str.replace("currentColor", "black");
+    let replacement = if options.color { "black" } else { "white" };
+    let svg_str = svg_str.replace("currentColor", replacement);
     let bytes = svg_str.as_bytes();
 
     let target_width = (options.width as f32 * 4.0).round().max(1.0) as u32;
