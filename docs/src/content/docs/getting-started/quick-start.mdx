@@ -1,0 +1,42 @@
+---
+title: Quick Start
+description: Render text with Artbox in a few lines.
+---
+
+## Install
+
+```bash
+cargo add artbox
+```
+
+## Minimal render
+
+```rust
+use artbox::{Artbox, RenderTarget};
+
+let art = Artbox::default();
+let target = RenderTarget::new(40, 8);
+
+let rendered = art.render_text("Hello", target)?;
+println!("{}", rendered.to_plain_string());
+```
+
+## ANSI output
+
+```rust
+use artbox::{Artbox, RenderTarget, Fill, Color};
+
+let art = Artbox::default().with_fill(Fill::solid(Color::rgb(255, 100, 0)));
+let target = RenderTarget::new(20, 6);
+
+let rendered = art.render_text("Hi", target)?;
+print!("{}", rendered.to_ansi_string());
+```
+
+## Output types
+
+`render_text` returns a unified `Rendered` output. Use:
+
+- `to_plain_string()` for plain text
+- `to_ansi_string()` for ANSI 24-bit colors
+- `metrics()` for size metadata when available

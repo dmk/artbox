@@ -1,0 +1,60 @@
+---
+title: Images
+description: Terminal image output with ASCII fallback.
+---
+
+## Enable the feature
+
+```toml
+artbox = { version = "0.1", features = ["images"] }
+```
+
+## Auto output (terminal or ASCII)
+
+```rust
+use artbox::{Artbox, RenderTarget};
+use artbox::images::ImageOutput;
+
+let art = Artbox::default().with_image_output(ImageOutput::Auto);
+let rendered = art.render_image_path("logo.svg", RenderTarget::new(40, 12))?;
+
+// Terminal output if supported, else ASCII
+print!("{}", rendered.to_terminal_or_ansi_string());
+```
+
+## Force ASCII output
+
+```rust
+use artbox::{Artbox, RenderTarget};
+use artbox::images::{ImageOutput, ascii::{AsciiOptions, AsciiMode}};
+
+let ascii = AsciiOptions::default()
+    .with_width(80)
+    .with_mode(AsciiMode::Shade)
+    .with_color(true);
+
+let art = Artbox::default()
+    .with_image_output(ImageOutput::Ascii)
+    .with_image_ascii_options(ascii);
+
+let rendered = art.render_image_path("photo.png", RenderTarget::new(80, 30))?;
+print!("{}", rendered.to_ansi_string());
+```
+
+## Force terminal image output
+
+```rust
+use artbox::{Artbox, RenderTarget};
+use artbox::images::{ImageOutput, TerminalImageConfig, TerminalImageMode};
+
+let config = TerminalImageConfig::default()
+    .with_mode(TerminalImageMode::Kitty)
+    .with_move_cursor(false);
+
+let art = Artbox::default()
+    .with_image_output(ImageOutput::Terminal)
+    .with_image_terminal_config(config);
+
+let rendered = art.render_image_path("logo.png", RenderTarget::new(40, 12))?;
+print!("{}", rendered.to_terminal_or_ansi_string());
+```

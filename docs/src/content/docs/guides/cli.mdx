@@ -1,0 +1,24 @@
+---
+title: CLI
+description: Image-to-ASCII conversion via the artbox CLI.
+---
+
+## Build with images feature
+
+```bash
+cargo run --bin artbox --features images -- image path/to/image.png --width 80
+```
+
+## Common flags
+
+- `--width <n>`: output width in characters
+- `--h-scale <f>`: horizontal scale factor
+- `--v-scale <f>`: vertical scale factor
+- `--brightness <n>`: -255 to 255
+- `--contrast <f>`: 0.0 to 3.0
+- `--sharpness <f>`: 0.0 to 3.0
+- `--mode <full|block|shade|ascii>`
+- `--threshold <n>`: threshold for full/block
+- `--invert`: invert brightness
+- `--no-color`: disable ANSI colors
+- `--output <path>`: write output to file

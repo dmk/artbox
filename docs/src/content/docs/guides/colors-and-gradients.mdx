@@ -1,0 +1,43 @@
+---
+title: Colors and Gradients
+description: Apply solid colors and gradients to text rendering.
+---
+
+## Solid fill
+
+```rust
+use artbox::{Artbox, RenderTarget, Fill, Color};
+
+let art = Artbox::default().with_fill(Fill::solid(Color::rgb(255, 100, 0)));
+let rendered = art.render_text("Hi", RenderTarget::new(20, 6))?;
+print!("{}", rendered.to_ansi_string());
+```
+
+## Linear gradients
+
+```rust
+use artbox::{Artbox, RenderTarget, Fill, LinearGradient, ColorStop, Color};
+
+let gradient = LinearGradient::new(
+    45.0,
+    vec![
+        ColorStop::new(0.0, Color::rgb(255, 0, 0)),
+        ColorStop::new(1.0, Color::rgb(0, 0, 255)),
+    ],
+);
+
+let art = Artbox::default().with_fill(Fill::Linear(gradient));
+let rendered = art.render_text("Gradient", RenderTarget::new(30, 6))?;
+print!("{}", rendered.to_ansi_string());
+```
+
+## Radial gradients
+
+```rust
+use artbox::{Artbox, RenderTarget, Fill, RadialGradient, Color};
+
+let radial = RadialGradient::centered(1.0, Color::rgb(0, 0, 0), Color::rgb(255, 255, 255));
+let art = Artbox::default().with_fill(Fill::Radial(radial));
+let rendered = art.render_text("Radial", RenderTarget::new(30, 6))?;
+print!("{}", rendered.to_ansi_string());
+```

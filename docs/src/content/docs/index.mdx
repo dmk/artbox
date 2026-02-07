@@ -1,0 +1,48 @@
+---
+title: artbox
+description: FIGlet/ASCII rendering with colors, gradients, sprites, and images
+template: splash
+hero:
+  tagline: Render FIGlet/ASCII text into bounded rectangles with colors, gradients, sprites, and images.
+  actions:
+    - text: Quick Start
+      link: /artbox/getting-started/quick-start/
+      icon: right-arrow
+      variant: primary
+    - text: View on GitHub
+      link: https://github.com/dmk/artbox
+      icon: external
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+<CardGrid>
+  <Card title="Quick Start" icon="rocket">
+    Render text in minutes with `Artbox`, `RenderTarget`, and a single output type.
+
+    [Start here ->](/artbox/getting-started/quick-start/)
+  </Card>
+  <Card title="Text and Fonts" icon="open-book">
+    Font stacks, alignment, spacing, and plain fallback.
+
+    [Read the guide ->](/artbox/guides/text-and-fonts/)
+  </Card>
+  <Card title="Sprites" icon="layers">
+    Layered ASCII art with auto-selection and optional manual overrides.
+
+    [Learn sprites ->](/artbox/guides/sprites/)
+  </Card>
+  <Card title="Images" icon="image">
+    Terminal image output with ASCII fallback.
+
+    [Image guide ->](/artbox/guides/images/)
+  </Card>
+</CardGrid>
+
+## What artbox is for
+
+- Render FIGlet/ASCII text into constrained rectangles
+- Apply colors and gradients (ANSI 24-bit)
+- Build layered sprites with auto-selection
+- Render images to terminal protocols or ASCII
+- Integrate with ratatui widgets

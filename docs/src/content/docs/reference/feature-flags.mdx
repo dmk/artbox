@@ -1,0 +1,25 @@
+---
+title: Feature Flags
+description: Optional features and what they enable.
+---
+
+## images
+
+Enables:
+- Terminal image output (kitty/iTerm2)
+- ASCII image rendering
+- `Artbox::render_image_path` / `render_image_bytes`
+
+```toml
+artbox = { version = "0.1", features = ["images"] }
+```
+
+## ratatui
+
+Enables:
+- `integrations::ratatui::ArtBox` widget
+- `integrations::ratatui::SpriteBox` widget
+
+```toml
+artbox = { version = "0.1", features = ["ratatui"] }
+```

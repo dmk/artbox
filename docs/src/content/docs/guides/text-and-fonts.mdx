@@ -1,0 +1,60 @@
+---
+title: Text and Fonts
+description: Configure text rendering, alignment, spacing, and font stacks.
+---
+
+## Renderer vs Artbox
+
+`Artbox` wraps `Renderer` and adds consistent APIs for sprites and images. If you only need text, you can still use `Renderer` directly.
+
+```rust
+use artbox::{Artbox, Renderer, RenderTarget, Alignment};
+
+let renderer = Renderer::default().with_alignment(Alignment::Center);
+let art = Artbox::from_renderer(renderer);
+
+let rendered = art.render_text("Hello", RenderTarget::new(40, 8))?;
+```
+
+## Alignment and spacing
+
+```rust
+use artbox::{Artbox, RenderTarget, Alignment};
+
+let art = Artbox::default()
+    .with_alignment(Alignment::Center)
+    .with_letter_spacing(-1)
+    .with_plain_fallback();
+
+let rendered = art.render_text("Overlap", RenderTarget::new(30, 6))?;
+```
+
+## Font stacks
+
+Use embedded fonts or build a custom stack. The renderer tries fonts in order and picks the first that fits the bounds.
+
+```rust
+use artbox::{Artbox, RenderTarget, fonts};
+
+let art = Artbox::new(fonts::stack(&["big", "standard", "small", "mini"]));
+let rendered = art.render_text("Hello", RenderTarget::new(40, 8))?;
+```
+
+## Font families
+
+```rust
+use artbox::{Artbox, RenderTarget, fonts};
+
+let art = Artbox::new(fonts::family("blocky").unwrap());
+let rendered = art.render_text("Blocky", RenderTarget::new(40, 8))?;
+```
+
+## Custom fonts
+
+```rust
+use artbox::{Artbox, Font, RenderTarget};
+
+let font = Font::from_file("/path/to/font.flf")?;
+let art = Artbox::new(vec![font]);
+let rendered = art.render_text("Custom", RenderTarget::new(40, 8))?;
+```

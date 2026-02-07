@@ -1,0 +1,44 @@
+---
+title: Sprites
+description: Layered ASCII art with size variants and auto-selection.
+---
+
+## What is a sprite?
+
+A sprite is a set of layered ASCII art variants. Each variant can have different sizes. Artbox will auto-select the first variant that fits the target bounds.
+
+**Important:** variant IDs are only used for *manual* selection. Auto-selection does not use the ID.
+
+## Build a sprite
+
+```rust
+use artbox::{Sprite, SpriteVariant, SpriteLayer, Color, Artbox, RenderTarget, SpriteSelection};
+
+let small = SpriteVariant::new(
+    "small",
+    vec![SpriteLayer::colored(":-)", Color::rgb(255, 200, 0))],
+);
+let large = SpriteVariant::new(
+    "large",
+    vec![SpriteLayer::colored("( ^_^ )", Color::rgb(255, 200, 0))],
+);
+
+let sprite = Sprite::new(vec![large, small]);
+let art = Artbox::default();
+
+// Auto-selection (default): first variant that fits
+let rendered = art.render_sprite(&sprite, RenderTarget::new(20, 5), SpriteSelection::Auto)?;
+print!("{}", rendered.to_plain_string());
+```
+
+## Manual selection
+
+```rust
+use artbox::{SpriteSelection, SpriteSize};
+
+// Select by id
+let rendered = art.render_sprite(&sprite, RenderTarget::new(20, 5), SpriteSelection::Id("small"))?;
+
+// Select by size enum
+let rendered = art.render_sprite(&sprite, RenderTarget::new(20, 5), SpriteSelection::Size(SpriteSize::Small))?;
+```

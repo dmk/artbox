@@ -1,7 +1,7 @@
 # artbox Makefile
 # Convenience targets for build, test, lint, and development
 
-.PHONY: all build check test fmt clippy clean help verify release lint fmt-check doc
+.PHONY: all build check test fmt clippy clean help verify release lint fmt-check doc docs-serve
 
 # Default target
 all: build
@@ -43,6 +43,10 @@ verify: fmt-check check clippy test doc
 doc:
 	cargo doc --all --no-deps
 
+# Serve Astro/Starlight documentation locally
+docs-serve:
+	npm --prefix docs run dev
+
 # Clean build artifacts
 clean:
 	cargo clean
@@ -61,5 +65,6 @@ help:
 	@echo "  make lint        - Run fmt-check, check, and clippy"
 	@echo "  make verify      - Run all checks (CI)"
 	@echo "  make doc         - Build docs (library crates only)"
+	@echo "  make docs-serve  - Serve Astro docs locally"
 	@echo "  make clean       - Remove build artifacts"
 	@echo "  make help        - Show this help"

@@ -1,0 +1,35 @@
+---
+title: Ratatui
+description: Widgets for rendering artbox output in ratatui.
+---
+
+## Enable the feature
+
+```toml
+artbox = { version = "0.1", features = ["ratatui"] }
+```
+
+## ArtBox widget (text)
+
+```rust
+use artbox::{Renderer, Alignment, Fill, Color};
+use artbox::integrations::ratatui::ArtBox as ArtBoxWidget;
+
+let renderer = Renderer::default()
+    .with_alignment(Alignment::Center)
+    .with_fill(Fill::solid(Color::rgb(255, 100, 0)));
+
+let widget = ArtBoxWidget::new(&renderer, "Hello");
+frame.render_widget(widget, area);
+```
+
+## SpriteBox widget
+
+```rust
+use artbox::{Sprite, SpriteVariant, SpriteLayer, SpriteSelection};
+use artbox::integrations::ratatui::SpriteBox;
+
+let sprite = Sprite::new(vec![SpriteVariant::new("small", vec![SpriteLayer::new(":-)")])]);
+let widget = SpriteBox::new(&sprite).with_selection(SpriteSelection::Auto);
+frame.render_widget(widget, area);
+```

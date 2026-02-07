@@ -1,0 +1,46 @@
+---
+title: API Overview
+description: Key types and how they fit together.
+---
+
+## Core types
+
+- `Artbox`: unified entrypoint (text, sprites, images)
+- `Renderer`: text-only renderer with alignment, spacing, fill
+- `RenderTarget`: `{ width, height }` for all render calls
+- `Rendered`: unified output enum
+- `GridRendered`: grid output for text/sprites/ASCII images
+
+## Output conversions
+
+```rust
+use artbox::{Artbox, RenderTarget};
+
+let art = Artbox::default();
+let rendered = art.render_text("Hello", RenderTarget::new(40, 8))?;
+
+let plain = rendered.to_plain_string();
+let ansi = rendered.to_ansi_string();
+let metrics = rendered.metrics();
+```
+
+## Fonts
+
+- `Font::from_file`, `Font::from_content`, `Font::from_bytes_latin1`, `Font::from_bytes_utf8`
+- `fonts::font`, `fonts::stack`, `fonts::family`, `fonts::default`
+
+## Colors & gradients
+
+- `Color`, `Rgb`, `Hsl`
+- `Fill`, `LinearGradient`, `RadialGradient`, `ColorStop`
+
+## Sprites
+
+- `Sprite`, `SpriteVariant`, `SpriteLayer`
+- `SpriteSelection`, `SpriteSize`
+
+## Images (feature `images`)
+
+- `ImageOutput`: `Auto | Terminal | Ascii`
+- `TerminalImageConfig`, `TerminalImageMode`
+- `render_image_*` helpers in `artbox::images`
