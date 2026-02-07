@@ -352,12 +352,10 @@ fn measure_content(content: &str) -> (usize, usize) {
 
 fn build_layer_grid(layer: &SpriteLayer<'_>) -> LayerGrid {
     let mut lines = Vec::new();
-    let mut max_width = 0;
 
     for line in layer.content.trim_end_matches('\n').lines() {
         let trimmed = line.trim_end_matches(' ');
         let chars: Vec<char> = trimmed.chars().collect();
-        max_width = max_width.max(chars.len());
         lines.push(chars);
     }
 

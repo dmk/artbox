@@ -293,7 +293,12 @@ pub struct LinearGradient {
 
 impl LinearGradient {
     /// Creates a new linear gradient.
-    pub fn new(angle: f32, stops: Vec<ColorStop>) -> Self {
+    pub fn new(angle: f32, mut stops: Vec<ColorStop>) -> Self {
+        stops.sort_by(|a, b| {
+            a.position
+                .partial_cmp(&b.position)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
         Self { angle, stops }
     }
 
@@ -354,7 +359,17 @@ pub struct RadialGradient {
 
 impl RadialGradient {
     /// Creates a new radial gradient.
-    pub fn new(center: (f32, f32), focal: (f32, f32), radius: f32, stops: Vec<ColorStop>) -> Self {
+    pub fn new(
+        center: (f32, f32),
+        focal: (f32, f32),
+        radius: f32,
+        mut stops: Vec<ColorStop>,
+    ) -> Self {
+        stops.sort_by(|a, b| {
+            a.position
+                .partial_cmp(&b.position)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
         Self {
             center,
             focal,
@@ -405,19 +420,11 @@ fn sample_gradient(stops: &[ColorStop], position: f32) -> Rgb {
         return stops[0].color.to_rgb();
     }
 
-    // Sort stops by position to ensure correct interpolation
-    let mut sorted: Vec<&ColorStop> = stops.iter().collect();
-    sorted.sort_by(|a, b| {
-        a.position
-            .partial_cmp(&b.position)
-            .unwrap_or(std::cmp::Ordering::Equal)
-    });
-
     let position = position.clamp(0.0, 1.0);
 
-    // Find the two stops to interpolate between
-    let mut prev = sorted[0];
-    for stop in sorted.iter() {
+    // Stops are pre-sorted by position at construction time.
+    let mut prev = &stops[0];
+    for stop in stops.iter() {
         if stop.position >= position {
             if (stop.position - prev.position).abs() < f32::EPSILON {
                 return stop.color.to_rgb();
@@ -429,7 +436,7 @@ fn sample_gradient(stops: &[ColorStop], position: f32) -> Rgb {
     }
 
     // Position is past all stops
-    sorted.last().unwrap().color.to_rgb()
+    stops.last().unwrap().color.to_rgb()
 }
 
 /// A fill style that can be a solid color or a gradient.
