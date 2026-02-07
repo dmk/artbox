@@ -2,7 +2,7 @@
 //!
 //! Shows render_text, render_sprite, and the Rendered output type.
 //!
-//! Run: cargo run --example demo_artbox
+//! Run: cargo run --example artbox
 
 use artbox::sprites::{SpriteLayer, SpriteSelection, SpriteVariant};
 use artbox::{Alignment, Artbox, Color, ColorStop, Fill, LinearGradient, RenderTarget, Sprite};
@@ -57,35 +57,5 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         println!("  sprite: {}x{}", metrics.width, metrics.height);
     }
 
-    // --- Rendered variant inspection ---
-    println!();
-    match &text_result {
-        artbox::Rendered::Text(_) => println!("  text_result is Rendered::Text (lightweight)"),
-        artbox::Rendered::Grid(_) => println!("  text_result is Rendered::Grid (has fill)"),
-        #[cfg(feature = "images")]
-        artbox::Rendered::TerminalImage { .. } => {}
-    }
-
-    // --- Renderer access ---
-    let _renderer = art.renderer();
-    println!("  renderer has fill: {}", art.renderer().has_fill());
-
     Ok(())
-}
-
-/// Demonstrate that without fill, render() returns the lightweight Text variant.
-#[allow(dead_code)]
-fn show_text_variant() {
-    let art = Artbox::default().with_alignment(Alignment::Center);
-    let target = RenderTarget::new(40, 10);
-    let result = art.render_text("Hi", target).unwrap();
-
-    // No fill → Rendered::Text (no grid allocation)
-    match &result {
-        artbox::Rendered::Text(text) => {
-            println!("plain: {}", text.text);
-            println!("metrics: {}x{}", text.width, text.height);
-        }
-        _ => println!("got grid (fill was set)"),
-    }
 }

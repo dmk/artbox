@@ -1,8 +1,9 @@
-//! Simple image-to-ASCII example.
+//! Image-to-ASCII example.
 //!
-//! Renders an image file as ASCII art and prints it to the terminal.
+//! Renders an image file as colored ASCII art. Defaults to the bundled
+//! `ruby.svg` asset, or pass a custom path as the first argument.
 //!
-//! Run: cargo run --example demo_image --features images -- <path>
+//! Run: cargo run --example image --features images
 
 #[cfg(feature = "images")]
 fn main() {
@@ -10,16 +11,12 @@ fn main() {
     use artbox::{Artbox, RenderTarget};
     use crossterm::terminal;
 
-    let path = match std::env::args().nth(1) {
-        Some(p) => p,
-        None => {
-            eprintln!("Usage: demo_image <image-path>");
-            std::process::exit(2);
-        }
-    };
+    let path = std::env::args()
+        .nth(1)
+        .unwrap_or_else(|| "examples/assets/ruby.svg".to_string());
 
     let (cols, rows) = terminal::size().unwrap_or((80, 24));
-    let target = RenderTarget::new(cols, rows);
+    let target = RenderTarget::new(cols / 2, rows / 2);
 
     let art = Artbox::default()
         .with_image_ascii_options(AsciiOptions {
@@ -41,6 +38,6 @@ fn main() {
 #[cfg(not(feature = "images"))]
 fn main() {
     eprintln!("This example requires the `images` feature.");
-    eprintln!("Run: cargo run --example demo_image --features images -- <path>");
+    eprintln!("Run: cargo run --example image --features images");
     std::process::exit(1);
 }

@@ -30,15 +30,15 @@
 use std::borrow::Cow;
 
 use crate::styled::StyledChar;
-use crate::{Alignment, Color, GridRendered, Rgb};
+use crate::{Alignment, Color, Fill, GridRendered, Rgb};
 
-/// A single sprite layer with optional color.
+/// A single sprite layer with optional fill (solid color or gradient).
 #[derive(Debug, Clone)]
 pub struct SpriteLayer<'a> {
     /// ASCII art content for this layer.
     pub content: Cow<'a, str>,
-    /// Optional layer color.
-    pub color: Option<Color>,
+    /// Optional layer fill (solid color, gradient, etc.).
+    pub fill: Option<Fill>,
 }
 
 impl<'a> SpriteLayer<'a> {
@@ -46,21 +46,27 @@ impl<'a> SpriteLayer<'a> {
     pub fn new(content: impl Into<Cow<'a, str>>) -> Self {
         Self {
             content: content.into(),
-            color: None,
+            fill: None,
         }
     }
 
-    /// Creates a new colored sprite layer.
+    /// Creates a new sprite layer with a solid color.
     pub fn colored(content: impl Into<Cow<'a, str>>, color: Color) -> Self {
         Self {
             content: content.into(),
-            color: Some(color),
+            fill: Some(Fill::solid(color)),
         }
     }
 
-    /// Sets the color for this layer.
+    /// Sets a solid color for this layer.
     pub fn with_color(mut self, color: Color) -> Self {
-        self.color = Some(color);
+        self.fill = Some(Fill::solid(color));
+        self
+    }
+
+    /// Sets a fill (solid, gradient, etc.) for this layer.
+    pub fn with_fill(mut self, fill: Fill) -> Self {
+        self.fill = Some(fill);
         self
     }
 }
@@ -121,7 +127,7 @@ impl<'a> SpriteVariant<'a> {
     ) -> Self {
         let layer = SpriteLayer {
             content: content.into(),
-            color,
+            fill: color.map(Fill::solid),
         };
         Self::new(id, vec![layer])
     }
@@ -347,7 +353,7 @@ impl std::error::Error for SpriteError {}
 struct LayerGrid {
     lines: Vec<Vec<char>>,
     height: usize,
-    color: Option<Rgb>,
+    fill: Option<Fill>,
 }
 
 fn measure_variant(variant: &SpriteVariant<'_>) -> (usize, usize) {
@@ -390,7 +396,7 @@ fn build_layer_grid(layer: &SpriteLayer<'_>) -> LayerGrid {
     LayerGrid {
         height: lines.len(),
         lines,
-        color: layer.color.map(|c| c.to_rgb()),
+        fill: layer.fill.clone(),
     }
 }
 
@@ -402,6 +408,17 @@ fn composite_variant(
     let grids: Vec<LayerGrid> = variant.layers.iter().map(build_layer_grid).collect();
     let mut out = vec![vec![StyledChar::plain(' '); content_width]; content_height];
 
+    let w = if content_width > 1 {
+        (content_width - 1) as f32
+    } else {
+        1.0
+    };
+    let h = if content_height > 1 {
+        (content_height - 1) as f32
+    } else {
+        1.0
+    };
+
     for (row_idx, row) in out.iter_mut().enumerate() {
         for (col_idx, cell) in row.iter_mut().enumerate() {
             let mut ch = ' ';
@@ -412,7 +429,11 @@ fn composite_variant(
                     if let Some(&candidate) = grid.lines[row_idx].get(col_idx) {
                         if candidate != ' ' {
                             ch = candidate;
-                            fg = grid.color;
+                            fg = grid.fill.as_ref().map(|fill| {
+                                let nx = col_idx as f32 / w;
+                                let ny = row_idx as f32 / h;
+                                fill.color_at(nx, ny)
+                            });
                             break;
                         }
                     }

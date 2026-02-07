@@ -74,44 +74,24 @@ enum GradientType {
 fn main() {
     let args = Args::parse();
 
-    let (inner_width, inner_height) = if args.no_border {
-        (args.width, args.height)
-    } else {
-        if args.width < 2 || args.height < 2 {
-            eprintln!("Width and height must be at least 2 for borders.");
-            std::process::exit(2);
-        }
-        (args.width - 2, args.height - 2)
-    };
-
     let fonts = resolve_fonts(&args);
     let mut renderer = Renderer::new(fonts)
         .with_plain_fallback()
         .with_alignment(args.alignment)
         .with_letter_spacing(args.spacing);
 
-    // Apply fill if specified
-    if let Some(fill) = resolve_fill(&args) {
-        renderer = renderer.with_fill(fill);
-    }
+    renderer = renderer.with_fill(resolve_fill(&args));
 
-    // Render
-    let result = if renderer.has_fill() {
-        renderer
-            .render_grid(&args.text, inner_width, inner_height)
-            .map(|grid| grid.to_ansi_string())
-    } else {
-        renderer
-            .render(&args.text, inner_width, inner_height)
-            .map(|rendered| rendered.to_plain_string())
-    };
+    let result = renderer
+        .render(&args.text, args.width, args.height)
+        .map(|rendered| rendered.to_ansi_string());
 
     match result {
         Ok(output) => {
             if args.no_border {
                 println!("{}", output);
             } else {
-                print_with_border(&output, inner_width, inner_height);
+                print_with_border(&output, args.width, args.height);
             }
         }
         Err(err) => {
@@ -121,14 +101,14 @@ fn main() {
     }
 }
 
-fn resolve_fill(args: &Args) -> Option<Fill> {
+fn resolve_fill(args: &Args) -> Fill {
     // Solid color
     if let Some((r, g, b)) = args.color {
-        return Some(Fill::solid(Color::rgb(r, g, b)));
+        return Fill::solid(Color::rgb(r, g, b));
     }
 
-    // Gradient
-    let gradient_type = args.gradient?;
+    // Default to diagonal when no --gradient specified
+    let gradient_type = args.gradient.unwrap_or(GradientType::Diagonal);
 
     let from = args.from.unwrap_or((255.0, 0.0, 128.0));
     let to = args.to.unwrap_or((0.0, 128.0, 255.0));
@@ -144,22 +124,19 @@ fn resolve_fill(args: &Args) -> Option<Fill> {
     match gradient_type {
         GradientType::Horizontal => {
             let angle = args.angle.unwrap_or(0.0);
-            Some(Fill::Linear(LinearGradient::new(angle, stops)))
+            Fill::Linear(LinearGradient::new(angle, stops))
         }
         GradientType::Vertical => {
             let angle = args.angle.unwrap_or(90.0);
-            Some(Fill::Linear(LinearGradient::new(angle, stops)))
+            Fill::Linear(LinearGradient::new(angle, stops))
         }
         GradientType::Diagonal => {
             let angle = args.angle.unwrap_or(45.0);
-            Some(Fill::Linear(LinearGradient::new(angle, stops)))
+            Fill::Linear(LinearGradient::new(angle, stops))
         }
-        GradientType::Radial => Some(Fill::Radial(RadialGradient::new(
-            (0.5, 0.5),
-            (0.5, 0.5),
-            1.0,
-            stops,
-        ))),
+        GradientType::Radial => {
+            Fill::Radial(RadialGradient::new((0.5, 0.5), (0.5, 0.5), 1.0, stops))
+        }
     }
 }
 

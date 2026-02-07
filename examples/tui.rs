@@ -2,7 +2,7 @@
 //!
 //! Shows a gradient title and a weather sprite that auto-sizes to the terminal.
 //!
-//! Run: cargo run --example demo_tui --features ratatui
+//! Run: cargo run --example tui --features ratatui
 //!
 //! Press 'q' or Esc to quit.
 
@@ -10,7 +10,7 @@
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     use std::io;
 
-    use artbox::integrations::ratatui::ArtBox;
+    use artbox::integrations::ratatui::{ArtBox, SpriteBox};
     use artbox::sprites::{SpriteLayer, SpriteVariant};
     use artbox::{Alignment, Color, ColorStop, Fill, LinearGradient, Renderer, Sprite};
     use crossterm::event::{self, Event, KeyCode};
@@ -60,28 +60,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let widget = ArtBox::new(&renderer, "artbox");
             frame.render_widget(widget, title_area);
 
-            // Render sprite manually into the buffer
-            if let Ok(rendered) = sprite.render(sprite_area.width, sprite_area.height) {
-                let buf = frame.buffer_mut();
-                for (row_idx, row) in rendered.chars.iter().enumerate() {
-                    let y = sprite_area.y + row_idx as u16;
-                    if y >= sprite_area.y + sprite_area.height {
-                        break;
-                    }
-                    for (col_idx, sc) in row.iter().enumerate() {
-                        let x = sprite_area.x + col_idx as u16;
-                        if x >= sprite_area.x + sprite_area.width {
-                            break;
-                        }
-                        let style = match sc.fg {
-                            Some(rgb) => ratatui::style::Style::default()
-                                .fg(ratatui::style::Color::Rgb(rgb.r, rgb.g, rgb.b)),
-                            None => ratatui::style::Style::default(),
-                        };
-                        buf.set_string(x, y, sc.ch.to_string(), style);
-                    }
-                }
-            }
+            // Render sprite using the SpriteBox widget
+            frame.render_widget(SpriteBox::new(&sprite), sprite_area);
         })?;
 
         if event::poll(std::time::Duration::from_millis(100))? {
@@ -101,6 +81,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 #[cfg(not(feature = "ratatui"))]
 fn main() {
     eprintln!("This example requires the `ratatui` feature.");
-    eprintln!("Run: cargo run --example demo_tui --features ratatui");
+    eprintln!("Run: cargo run --example tui --features ratatui");
     std::process::exit(1);
 }
