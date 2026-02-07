@@ -31,6 +31,7 @@ const KITTY_CHUNK_SIZE: usize = 4096;
 pub mod ascii;
 
 /// Supported terminal image protocols.
+#[non_exhaustive]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ImageProtocol {
     Kitty,
@@ -38,6 +39,7 @@ pub enum ImageProtocol {
 }
 
 /// How to choose image output.
+#[non_exhaustive]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum ImageOutput {
     /// Prefer terminal image output when supported, otherwise ASCII.
@@ -50,6 +52,7 @@ pub enum ImageOutput {
 }
 
 /// Result of terminal capability detection.
+#[non_exhaustive]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TerminalImageSupport {
     Unsupported,
@@ -69,6 +72,7 @@ impl TerminalImageSupport {
 }
 
 /// How to choose the image protocol.
+#[non_exhaustive]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TerminalImageMode {
     /// Auto-detect support (best effort).
@@ -173,6 +177,7 @@ impl std::fmt::Display for TerminalImage {
 }
 
 /// Errors that can occur while rendering terminal images.
+#[non_exhaustive]
 #[derive(Debug)]
 pub enum ImageError {
     UnsupportedTerminal,
@@ -215,6 +220,7 @@ impl From<std::io::Error> for ImageError {
 }
 
 /// Errors that can occur while rendering images into unified outputs.
+#[non_exhaustive]
 #[derive(Debug)]
 pub enum ImageRenderError {
     Terminal(ImageError),

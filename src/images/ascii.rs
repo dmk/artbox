@@ -19,6 +19,7 @@ const BLOCK_CHARS: [char; 16] = [
 ];
 
 /// Rendering modes for ASCII conversion.
+#[non_exhaustive]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum AsciiMode {
     /// Full blocks (`█`) or spaces based on a threshold.
@@ -146,6 +147,7 @@ pub struct AsciiMetrics {
 }
 
 /// Errors that can occur during ASCII rendering.
+#[non_exhaustive]
 #[derive(Debug)]
 pub enum AsciiError {
     EmptyWidth,

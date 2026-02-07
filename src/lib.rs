@@ -37,7 +37,7 @@
 //!
 //! ## Features
 //!
-//! - **`ratatui`** - Enables the [`integrations::ratatui::ArtBox`] widget for TUI applications.
+//! - **`ratatui`** - Enables the `ArtBox` widget for TUI applications.
 //!
 //! ## Colors and Gradients
 //!
@@ -131,6 +131,7 @@ impl TextRendered {
 }
 
 /// Unified render output for text, sprites, and images.
+#[non_exhaustive]
 #[derive(Debug, Clone)]
 pub enum Rendered {
     /// Lightweight text output (no per-character colors).
@@ -339,6 +340,7 @@ impl Font {
 /// let renderer = Renderer::default()
 ///     .with_alignment(Alignment::Center);
 /// ```
+#[non_exhaustive]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Alignment {
     /// Align to top-left corner.
@@ -587,6 +589,7 @@ impl Default for Renderer {
 }
 
 /// Unified error type for all artbox operations.
+#[non_exhaustive]
 #[derive(Debug)]
 pub enum Error {
     /// Text rendering error.
@@ -809,6 +812,7 @@ pub struct RenderMetrics {
 }
 
 /// Errors that can occur during rendering.
+#[non_exhaustive]
 #[derive(Debug, Clone)]
 pub enum RenderError {
     /// The specified width or height was zero.
@@ -832,6 +836,7 @@ impl std::fmt::Display for RenderError {
 impl std::error::Error for RenderError {}
 
 /// Errors that can occur when loading or parsing fonts.
+#[non_exhaustive]
 #[derive(Debug)]
 pub enum FontError {
     /// Failed to read a font file from disk.

@@ -202,6 +202,7 @@ fn lerp_u8(a: u8, b: u8, t: f32) -> u8 {
 }
 
 /// A color that can be either RGB or HSL.
+#[non_exhaustive]
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Color {
     /// An RGB color.
@@ -440,6 +441,7 @@ fn sample_gradient(stops: &[ColorStop], position: f32) -> Rgb {
 }
 
 /// A fill style that can be a solid color or a gradient.
+#[non_exhaustive]
 #[derive(Debug, Clone, PartialEq)]
 pub enum Fill {
     /// A solid color fill.

@@ -1290,6 +1290,7 @@ mod playground {
             TerminalImageSupport::Kitty => "kitty",
             TerminalImageSupport::Iterm2 => "iterm2",
             TerminalImageSupport::Unsupported => "none",
+            _ => "unknown",
         };
 
         let mut lines = Vec::new();
@@ -2116,7 +2117,7 @@ mod playground {
         match mode {
             TerminalImageMode::Kitty => Some(artbox::images::ImageProtocol::Kitty),
             TerminalImageMode::Iterm2 => Some(artbox::images::ImageProtocol::Iterm2),
-            TerminalImageMode::Auto | TerminalImageMode::Disabled => None,
+            TerminalImageMode::Auto | TerminalImageMode::Disabled | _ => None,
         }
     }
 
@@ -2132,7 +2133,7 @@ mod playground {
                     mode: TerminalImageMode::Iterm2,
                     label: "auto (iterm2)",
                 },
-                TerminalImageSupport::Unsupported => OutputStatus::Fallback {
+                TerminalImageSupport::Unsupported | _ => OutputStatus::Fallback {
                     label: "auto (unsupported)",
                 },
             },
@@ -2182,6 +2183,7 @@ mod playground {
             AsciiMode::Block => "block",
             AsciiMode::Shade => "shade",
             AsciiMode::Ascii => "ascii",
+            _ => "unknown",
         }
     }
 

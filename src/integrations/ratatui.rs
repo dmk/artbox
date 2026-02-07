@@ -20,7 +20,7 @@
 //! }
 //! ```
 
-use ratatui::{buffer::Buffer, layout::Rect, style::Style, widgets::Widget};
+use ratatui::{buffer::Buffer, layout::Rect, widgets::Widget};
 
 use crate::color::Rgb;
 use crate::sprites::{Sprite, SpriteSelection};
@@ -130,12 +130,11 @@ fn render_grid_to_buffer(chars: &[Vec<StyledChar>], area: Rect, buf: &mut Buffer
                 break;
             }
 
-            let style = match sc.fg {
-                Some(rgb) => Style::default().fg(to_ratatui_color(rgb)),
-                None => Style::default(),
-            };
-
-            buf.set_string(x, y, sc.ch.to_string(), style);
+            let cell = &mut buf[(x, y)];
+            cell.set_char(sc.ch);
+            if let Some(rgb) = sc.fg {
+                cell.set_fg(to_ratatui_color(rgb));
+            }
         }
     }
 }

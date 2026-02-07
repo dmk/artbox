@@ -117,8 +117,8 @@ pub fn font(name: &str) -> Option<Font> {
 
 /// Creates a font stack from a list of font names.
 ///
-/// Invalid font names are silently skipped. The resulting stack can be
-/// passed to [`Renderer::new()`](crate::Renderer::new).
+/// Invalid font names are silently skipped. Use [`try_stack`] if you need
+/// to detect invalid names.
 ///
 /// # Examples
 ///
@@ -136,6 +136,30 @@ pub fn stack(names: &[&str]) -> Vec<Font> {
     }
 
     fonts
+}
+
+/// Creates a font stack from a list of font names, returning an error for
+/// any name that doesn't match an embedded font.
+///
+/// # Examples
+///
+/// ```rust
+/// use artbox::fonts;
+///
+/// let stack = fonts::try_stack(&["big", "small"]).unwrap();
+/// assert_eq!(stack.len(), 2);
+///
+/// assert!(matches!(fonts::try_stack(&["big", "typo"]), Err("typo")));
+/// ```
+pub fn try_stack<'a>(names: &[&'a str]) -> Result<Vec<Font>, &'a str> {
+    let mut fonts = Vec::new();
+    for name in names {
+        match font(name) {
+            Some(f) => fonts.push(f),
+            None => return Err(name),
+        }
+    }
+    Ok(fonts)
 }
 
 /// Returns the default font stack.

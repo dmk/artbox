@@ -74,6 +74,7 @@ impl<'a> SpriteLayer<'a> {
 }
 
 /// Named sprite size categories.
+#[non_exhaustive]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SpriteSize {
     Small,
@@ -93,6 +94,7 @@ impl SpriteSize {
 }
 
 /// Sprite variant selection mode.
+#[non_exhaustive]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SpriteSelection<'a> {
     /// Auto-select the first variant that fits the bounds.
@@ -292,6 +294,7 @@ pub struct SpriteMetrics {
 }
 
 /// Errors that can occur during sprite rendering.
+#[non_exhaustive]
 #[derive(Debug, Clone)]
 pub enum SpriteError {
     /// The specified width or height was zero.
