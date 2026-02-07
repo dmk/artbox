@@ -24,6 +24,7 @@ use ratatui::{buffer::Buffer, layout::Rect, style::Style, widgets::Widget};
 
 use crate::color::Rgb;
 use crate::sprites::{Sprite, SpriteSelection};
+use crate::styled::StyledChar;
 use crate::Renderer;
 
 /// A ratatui widget that renders ASCII art text.
@@ -74,26 +75,7 @@ impl Widget for ArtBox<'_> {
             return;
         };
 
-        for (row_idx, row) in rendered.chars.iter().enumerate() {
-            let y = area.y + row_idx as u16;
-            if y >= area.y + area.height {
-                break;
-            }
-
-            for (col_idx, sc) in row.iter().enumerate() {
-                let x = area.x + col_idx as u16;
-                if x >= area.x + area.width {
-                    break;
-                }
-
-                let style = match sc.fg {
-                    Some(rgb) => Style::default().fg(to_ratatui_color(rgb)),
-                    None => Style::default(),
-                };
-
-                buf.set_string(x, y, sc.ch.to_string(), style);
-            }
-        }
+        render_grid_to_buffer(&rendered.chars, area, buf);
     }
 }
 
@@ -131,30 +113,33 @@ impl Widget for SpriteBox<'_> {
             return;
         };
 
-        for (row_idx, row) in rendered.chars.iter().enumerate() {
-            let y = area.y + row_idx as u16;
-            if y >= area.y + area.height {
+        render_grid_to_buffer(&rendered.chars, area, buf);
+    }
+}
+
+fn render_grid_to_buffer(chars: &[Vec<StyledChar>], area: Rect, buf: &mut Buffer) {
+    for (row_idx, row) in chars.iter().enumerate() {
+        let y = area.y + row_idx as u16;
+        if y >= area.y + area.height {
+            break;
+        }
+
+        for (col_idx, sc) in row.iter().enumerate() {
+            let x = area.x + col_idx as u16;
+            if x >= area.x + area.width {
                 break;
             }
 
-            for (col_idx, sc) in row.iter().enumerate() {
-                let x = area.x + col_idx as u16;
-                if x >= area.x + area.width {
-                    break;
-                }
+            let style = match sc.fg {
+                Some(rgb) => Style::default().fg(to_ratatui_color(rgb)),
+                None => Style::default(),
+            };
 
-                let style = match sc.fg {
-                    Some(rgb) => Style::default().fg(to_ratatui_color(rgb)),
-                    None => Style::default(),
-                };
-
-                buf.set_string(x, y, sc.ch.to_string(), style);
-            }
+            buf.set_string(x, y, sc.ch.to_string(), style);
         }
     }
 }
 
-/// Converts an artbox RGB color to a ratatui Color.
 fn to_ratatui_color(rgb: Rgb) -> ratatui::style::Color {
     ratatui::style::Color::Rgb(rgb.r, rgb.g, rgb.b)
 }

@@ -51,50 +51,12 @@ impl GridRendered {
     ///
     /// Uses 24-bit true color escape sequences (`\x1b[38;2;R;G;Bm`).
     pub fn to_ansi_string(&self) -> String {
-        let mut out = String::new();
-        let mut last_color: Option<Rgb> = None;
-
-        for (row_idx, row) in self.chars.iter().enumerate() {
-            for sc in row {
-                // Only emit color code if it changed
-                if sc.fg != last_color {
-                    if let Some(rgb) = sc.fg {
-                        out.push_str(&rgb.to_ansi_fg());
-                    } else {
-                        out.push_str(ANSI_RESET);
-                    }
-                    last_color = sc.fg;
-                }
-                out.push(sc.ch);
-            }
-
-            if row_idx < self.chars.len() - 1 {
-                out.push('\n');
-            }
-        }
-
-        // Reset colors at end
-        if last_color.is_some() {
-            out.push_str(ANSI_RESET);
-        }
-
-        out
+        grid_to_ansi_string(&self.chars)
     }
 
     /// Converts to a plain string without any color codes.
     pub fn to_plain_string(&self) -> String {
-        let mut out = String::new();
-
-        for (row_idx, row) in self.chars.iter().enumerate() {
-            for sc in row {
-                out.push(sc.ch);
-            }
-            if row_idx < self.chars.len() - 1 {
-                out.push('\n');
-            }
-        }
-
-        out
+        grid_to_plain_string(&self.chars)
     }
 
     /// Returns the metrics for this rendered result.
@@ -105,6 +67,50 @@ impl GridRendered {
             font_index: self.font_index,
         }
     }
+}
+
+/// Converts a 2D grid of styled characters to an ANSI-colored string.
+pub(crate) fn grid_to_ansi_string(chars: &[Vec<StyledChar>]) -> String {
+    let mut out = String::new();
+    let mut last_color: Option<Rgb> = None;
+
+    for (row_idx, row) in chars.iter().enumerate() {
+        for sc in row {
+            if sc.fg != last_color {
+                if let Some(rgb) = sc.fg {
+                    out.push_str(&rgb.to_ansi_fg());
+                } else {
+                    out.push_str(ANSI_RESET);
+                }
+                last_color = sc.fg;
+            }
+            out.push(sc.ch);
+        }
+
+        if row_idx < chars.len() - 1 {
+            out.push('\n');
+        }
+    }
+
+    if last_color.is_some() {
+        out.push_str(ANSI_RESET);
+    }
+
+    out
+}
+
+/// Converts a 2D grid of styled characters to a plain string.
+pub(crate) fn grid_to_plain_string(chars: &[Vec<StyledChar>]) -> String {
+    let mut out = String::new();
+    for (row_idx, row) in chars.iter().enumerate() {
+        for sc in row {
+            out.push(sc.ch);
+        }
+        if row_idx < chars.len() - 1 {
+            out.push('\n');
+        }
+    }
+    out
 }
 
 /// Creates a plain styled character grid with no colors.

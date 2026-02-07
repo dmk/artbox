@@ -29,8 +29,10 @@
 
 use std::borrow::Cow;
 
-use crate::styled::StyledChar;
-use crate::{Alignment, Color, Fill, GridRendered, Rgb};
+use unicode_width::UnicodeWidthStr;
+
+use crate::styled::{grid_to_ansi_string, grid_to_plain_string, StyledChar};
+use crate::{alignment_parts, Alignment, Color, Fill, GridRendered, HAlign, VAlign};
 
 /// A single sprite layer with optional fill (solid color or gradient).
 #[derive(Debug, Clone)]
@@ -254,46 +256,12 @@ pub struct SpriteRendered {
 impl SpriteRendered {
     /// Converts to an ANSI-colored string for terminal output.
     pub fn to_ansi_string(&self) -> String {
-        let mut out = String::new();
-        let mut last_color: Option<Rgb> = None;
-
-        for (row_idx, row) in self.chars.iter().enumerate() {
-            for sc in row {
-                if sc.fg != last_color {
-                    if let Some(rgb) = sc.fg {
-                        out.push_str(&rgb.to_ansi_fg());
-                    } else {
-                        out.push_str(crate::color::ANSI_RESET);
-                    }
-                    last_color = sc.fg;
-                }
-                out.push(sc.ch);
-            }
-
-            if row_idx < self.chars.len() - 1 {
-                out.push('\n');
-            }
-        }
-
-        if last_color.is_some() {
-            out.push_str(crate::color::ANSI_RESET);
-        }
-
-        out
+        grid_to_ansi_string(&self.chars)
     }
 
     /// Converts to a plain string without color codes.
     pub fn to_plain_string(&self) -> String {
-        let mut out = String::new();
-        for (row_idx, row) in self.chars.iter().enumerate() {
-            for sc in row {
-                out.push(sc.ch);
-            }
-            if row_idx < self.chars.len() - 1 {
-                out.push('\n');
-            }
-        }
-        out
+        grid_to_plain_string(&self.chars)
     }
 
     /// Returns metrics about the sprite content.
@@ -375,7 +343,7 @@ fn measure_content(content: &str) -> (usize, usize) {
 
     for line in content.trim_end_matches('\n').lines() {
         let trimmed = line.trim_end_matches(' ');
-        max_width = max_width.max(trimmed.chars().count());
+        max_width = max_width.max(UnicodeWidthStr::width(trimmed));
         lines += 1;
     }
 
@@ -489,37 +457,10 @@ fn align_sprite(
     out
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum HAlign {
-    Left,
-    Center,
-    Right,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum VAlign {
-    Top,
-    Middle,
-    Bottom,
-}
-
-fn alignment_parts(alignment: Alignment) -> (HAlign, VAlign) {
-    match alignment {
-        Alignment::TopLeft => (HAlign::Left, VAlign::Top),
-        Alignment::Top => (HAlign::Center, VAlign::Top),
-        Alignment::TopRight => (HAlign::Right, VAlign::Top),
-        Alignment::Left => (HAlign::Left, VAlign::Middle),
-        Alignment::Center => (HAlign::Center, VAlign::Middle),
-        Alignment::Right => (HAlign::Right, VAlign::Middle),
-        Alignment::BottomLeft => (HAlign::Left, VAlign::Bottom),
-        Alignment::Bottom => (HAlign::Center, VAlign::Bottom),
-        Alignment::BottomRight => (HAlign::Right, VAlign::Bottom),
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::Rgb;
 
     #[test]
     fn auto_selects_first_fit() {
@@ -566,5 +507,13 @@ mod tests {
         let rendered = sprite.render(3, 3).unwrap();
         assert_eq!(rendered.chars.len(), 3);
         assert_eq!(rendered.chars[0].len(), 3);
+    }
+
+    #[test]
+    fn measure_content_uses_display_width() {
+        // CJK character "世" has display width 2 but chars().count() == 1
+        let (width, height) = measure_content("\u{4e16}");
+        assert_eq!(width, 2);
+        assert_eq!(height, 1);
     }
 }

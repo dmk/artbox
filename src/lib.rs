@@ -251,10 +251,10 @@ impl Font {
     /// use artbox::Font;
     ///
     /// let font = Font::from_file("/path/to/font.flf")?;
-    /// # Ok::<(), String>(())
+    /// # Ok::<(), artbox::FontError>(())
     /// ```
-    pub fn from_file(path: &str) -> Result<Self, String> {
-        let contents = std::fs::read(path).map_err(|e| format!("{e:?}"))?;
+    pub fn from_file(path: &str) -> Result<Self, FontError> {
+        let contents = std::fs::read(path)?;
         Self::from_bytes_latin1(&contents)
     }
 
@@ -263,7 +263,7 @@ impl Font {
     /// # Errors
     ///
     /// Returns an error if the content is not valid FIGlet format.
-    pub fn from_content(contents: &str) -> Result<Self, String> {
+    pub fn from_content(contents: &str) -> Result<Self, FontError> {
         parse_figlet_content(contents).map(Self::figlet)
     }
 
@@ -275,7 +275,7 @@ impl Font {
     /// # Errors
     ///
     /// Returns an error if the content is not valid FIGlet format.
-    pub fn from_bytes_latin1(bytes: &[u8]) -> Result<Self, String> {
+    pub fn from_bytes_latin1(bytes: &[u8]) -> Result<Self, FontError> {
         let contents = latin1_to_string(bytes);
         parse_figlet_content(&contents).map(Self::figlet)
     }
@@ -287,8 +287,8 @@ impl Font {
     /// # Errors
     ///
     /// Returns an error if the bytes are not valid UTF-8 or valid FIGlet format.
-    pub fn from_bytes_utf8(bytes: &[u8]) -> Result<Self, String> {
-        let contents = std::str::from_utf8(bytes).map_err(|e| format!("{e:?}"))?;
+    pub fn from_bytes_utf8(bytes: &[u8]) -> Result<Self, FontError> {
+        let contents = std::str::from_utf8(bytes)?;
         parse_figlet_content(contents).map(Self::figlet)
     }
 
@@ -831,6 +831,49 @@ impl std::fmt::Display for RenderError {
 
 impl std::error::Error for RenderError {}
 
+/// Errors that can occur when loading or parsing fonts.
+#[derive(Debug)]
+pub enum FontError {
+    /// Failed to read a font file from disk.
+    Io(std::io::Error),
+    /// The font file content is not valid UTF-8.
+    InvalidUtf8(std::str::Utf8Error),
+    /// The font content could not be parsed as a valid FIGlet font.
+    Parse(String),
+}
+
+impl std::fmt::Display for FontError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            FontError::Io(err) => write!(f, "font file I/O error: {err}"),
+            FontError::InvalidUtf8(err) => write!(f, "font content is not valid UTF-8: {err}"),
+            FontError::Parse(msg) => write!(f, "font parse error: {msg}"),
+        }
+    }
+}
+
+impl std::error::Error for FontError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            FontError::Io(err) => Some(err),
+            FontError::InvalidUtf8(err) => Some(err),
+            FontError::Parse(_) => None,
+        }
+    }
+}
+
+impl From<std::io::Error> for FontError {
+    fn from(err: std::io::Error) -> Self {
+        FontError::Io(err)
+    }
+}
+
+impl From<std::str::Utf8Error> for FontError {
+    fn from(err: std::str::Utf8Error) -> Self {
+        FontError::InvalidUtf8(err)
+    }
+}
+
 fn render_figlet_with_spacing(font: &FIGfont, content: &str, spacing: i16) -> Option<String> {
     if content.is_empty() {
         return None;
@@ -937,14 +980,14 @@ fn latin1_to_string(bytes: &[u8]) -> String {
     bytes.iter().map(|byte| *byte as char).collect()
 }
 
-fn parse_figlet_content(contents: &str) -> Result<FIGfont, String> {
+fn parse_figlet_content(contents: &str) -> Result<FIGfont, FontError> {
     match FIGfont::from_content(contents) {
         Ok(font) => Ok(font),
         Err(err) => {
             let Some(sanitized) = sanitize_figlet_content(contents) else {
-                return Err(err);
+                return Err(FontError::Parse(err));
             };
-            FIGfont::from_content(&sanitized)
+            FIGfont::from_content(&sanitized).map_err(FontError::Parse)
         }
     }
 }
@@ -1118,20 +1161,20 @@ fn push_spaces(out: &mut String, count: usize) {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum HAlign {
+pub(crate) enum HAlign {
     Left,
     Center,
     Right,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum VAlign {
+pub(crate) enum VAlign {
     Top,
     Middle,
     Bottom,
 }
 
-fn alignment_parts(alignment: Alignment) -> (HAlign, VAlign) {
+pub(crate) fn alignment_parts(alignment: Alignment) -> (HAlign, VAlign) {
     match alignment {
         Alignment::TopLeft => (HAlign::Left, VAlign::Top),
         Alignment::Top => (HAlign::Center, VAlign::Top),
@@ -1178,6 +1221,24 @@ mod tests {
         let original = font.render_with_spacing("A", 0);
         let cloned_render = cloned.render_with_spacing("A", 0);
         assert_eq!(original, cloned_render);
+    }
+
+    #[test]
+    fn font_error_io() {
+        let result = Font::from_file("/nonexistent/path.flf");
+        assert!(matches!(result, Err(FontError::Io(_))));
+    }
+
+    #[test]
+    fn font_error_parse() {
+        let result = Font::from_content("not a font");
+        assert!(matches!(result, Err(FontError::Parse(_))));
+    }
+
+    #[test]
+    fn font_error_invalid_utf8() {
+        let result = Font::from_bytes_utf8(&[0xFF, 0xFE]);
+        assert!(matches!(result, Err(FontError::InvalidUtf8(_))));
     }
 
     // ==================== Renderer Tests ====================

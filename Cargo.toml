@@ -10,9 +10,10 @@ keywords = ["figlet", "ascii-art", "tui", "ratatui"]
 categories = ["command-line-interface", "text-processing"]
 
 [features]
-default = ["ratatui"]
+default = []
 ratatui = ["dep:ratatui"]
 images = ["dep:base64", "dep:image", "dep:resvg"]
+cli = ["dep:clap"]
 
 [dependencies]
 figlet-rs = "0.1"
@@ -21,8 +22,25 @@ ratatui = { version = "0.29", optional = true }
 base64 = { version = "0.22", optional = true }
 image = { version = "0.25", optional = true }
 resvg = { version = "0.43", optional = true }
-clap = { version = "4.5.23", features = ["derive"] }
+clap = { version = "4.5.23", features = ["derive"], optional = true }
 
 [dev-dependencies]
 tui-dispatch = "0.5.4"
 crossterm = "0.28"
+
+[[bin]]
+name = "artbox"
+path = "src/bin/artbox.rs"
+required-features = ["cli", "images"]
+
+[[example]]
+name = "gradient"
+required-features = ["cli"]
+
+[[example]]
+name = "playground"
+required-features = ["cli", "images", "ratatui"]
+
+[[example]]
+name = "tui"
+required-features = ["ratatui"]
