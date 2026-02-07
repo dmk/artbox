@@ -26,6 +26,8 @@ use image::DynamicImage;
 
 const KITTY_CHUNK_SIZE: usize = 4096;
 
+pub mod ascii;
+
 /// Supported terminal image protocols.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ImageProtocol {
