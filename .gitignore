@@ -36,6 +36,7 @@ __pycache__/
 docs/book/
 docs/node_modules/
 docs/dist/
+docs/preview-wasm/target/
 
 # other stuff
 misc/

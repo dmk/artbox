@@ -1,5 +1,7 @@
 import { defineConfig } from 'astro/config';
+import react from '@astrojs/react';
 import starlight from '@astrojs/starlight';
+import tailwindcss from '@tailwindcss/vite';
 
 export default defineConfig({
   site: 'https://dmk.github.io',
@@ -27,6 +29,7 @@ export default defineConfig({
             { label: 'Sprites', slug: 'guides/sprites' },
             { label: 'Images', slug: 'guides/images' },
             { label: 'Ratatui', slug: 'guides/ratatui' },
+            { label: 'Live Preview', slug: 'guides/live-preview' },
             { label: 'CLI', slug: 'guides/cli' },
           ],
         },
@@ -39,5 +42,15 @@ export default defineConfig({
         },
       ],
     }),
+    react(),
   ],
+  vite: {
+    plugins: [tailwindcss()],
+    resolve: {
+      dedupe: ['react', 'react-dom'],
+    },
+    optimizeDeps: {
+      exclude: ['@dkkoval/tui-preview'],
+    },
+  },
 });

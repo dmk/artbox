@@ -3,10 +3,26 @@ title: Ratatui
 description: Widgets for rendering artbox output in ratatui.
 ---
 
+import { ArtboxPreview } from '../../../components/ArtboxPreview';
+
+## Demo
+
+Here's a weather app built with artbox and ratatui, showing how content automatically adapts to terminal size:
+
+![artbox ratatui demo](/artbox/artbox-demo.gif)
+
+## Live preview
+
+<ArtboxPreview client:only="react" />
+
+The preview above runs a tiny `wasm32-wasi` binary built from `artbox` and rendered in the browser using `@dkkoval/tui-preview`.
+
+For full controls (sliders/forms that rerun with new args), use [Live Preview](/artbox/guides/live-preview/).
+
 ## Enable the feature
 
 ```toml
-artbox = { version = "0.1", features = ["ratatui"] }
+artbox = { version = "0.2", features = ["ratatui"] }
 ```
 
 ## ArtBox widget (text)

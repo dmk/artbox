@@ -3,11 +3,13 @@ title: CLI
 description: Image-to-ASCII conversion via the artbox CLI.
 ---
 
-## Build with images feature
+## Build with `cli` and `images`
 
 ```bash
-cargo run --bin artbox --features images -- image path/to/image.png --width 80
+cargo run --bin artbox --features "cli images" -- image path/to/image.png --width 80
 ```
+
+The `artbox` binary is gated behind both features.
 
 ## Common flags
 

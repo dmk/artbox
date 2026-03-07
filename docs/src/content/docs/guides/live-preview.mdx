@@ -1,0 +1,16 @@
+---
+title: Live Preview
+description: Interactive artbox playground with live controls and reruns.
+---
+
+import { ArtboxPlayground } from '../../../components/ArtboxPlayground';
+
+Use the controls below to tweak fonts, alignment, fills, and gradients. Each control change reruns the wasm command with updated parameters.
+
+<ArtboxPlayground client:only="react" />
+
+## Notes
+
+- The preview runs a `wasm32-wasi` binary built from `docs/preview-wasm`.
+- The terminal auto-fits to the preview container on every rerun.
+- If text doesn't fit selected fonts, enable **Plain Fallback**.

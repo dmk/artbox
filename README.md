@@ -1,6 +1,8 @@
 # artbox
 
-Render FIGlet text, sprites, and images into a bounded rectangle with colors and gradients.
+ASCII art / FIGlet text that automatically scales to fit your terminal — with gradients, alignment, and a unified API for text, sprites, and images.
+
+![artbox demo](./docs/public/artbox-demo.gif)
 
 ```
 cargo add artbox
@@ -158,7 +160,7 @@ frame.render_widget(sprite_widget, area);
 
 ```bash
 # Text with gradient
-cargo run --example gradient -- "Hello" 60 10 --gradient diagonal --from 255,0,128 --to 0,128,255
+cargo run --example gradient --features cli -- "Hello" 60 10 --gradient diagonal --from 255,0,128 --to 0,128,255
 
 # Unified API (text + sprites)
 cargo run --example artbox
@@ -181,6 +183,6 @@ Local docs:
 
 ```bash
 cd docs
-npm install
+npm ci
 npm run dev
 ```

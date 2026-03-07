@@ -1,0 +1,138 @@
+@import "tailwindcss/theme" layer(theme);
+@import "tailwindcss/utilities" layer(utilities);
+@source "../components/ArtboxPlayground.tsx";
+
+@theme {
+  --color-pg-bg: #0c1018;
+  --color-pg-surface: #111820;
+  --color-pg-panel: #131a23;
+  --color-pg-border: #1e2b3a;
+  --color-pg-text: #dce6ff;
+  --color-pg-text-dim: #556a83;
+  --color-pg-text-mid: #8b9db5;
+  --color-pg-accent: #7aa2f7;
+  --color-pg-accent-dim: rgba(122, 162, 247, 0.12);
+  --color-pg-accent-mid: rgba(122, 162, 247, 0.25);
+  --color-pg-terminal-bg: #0b1020;
+
+  --font-pg-mono: 'SF Mono', 'Cascadia Code', 'Fira Code', Menlo, Consolas,
+    'Liberation Mono', monospace;
+}
+
+@layer components {
+  /* Light theme overrides */
+  :root[data-theme="light"] {
+    --color-pg-bg: #f6f7fb;
+    --color-pg-surface: #eceef4;
+    --color-pg-panel: #f0f1f6;
+    --color-pg-border: #d4d8e3;
+    --color-pg-text: #1a1f2e;
+    --color-pg-text-dim: #8590a5;
+    --color-pg-text-mid: #5a6578;
+    --color-pg-accent: #4f6ec5;
+    --color-pg-accent-dim: rgba(79, 110, 197, 0.10);
+    --color-pg-accent-mid: rgba(79, 110, 197, 0.22);
+    --color-pg-terminal-bg: #0b1020;
+  }
+
+  /* Scoped reset — kills Starlight bleed-through */
+  .artbox-pg *,
+  .artbox-pg *::before,
+  .artbox-pg *::after {
+    box-sizing: border-box;
+    margin: 0;
+  }
+
+  /* Range slider */
+  .artbox-pg input[type="range"] {
+    -webkit-appearance: none;
+    appearance: none;
+    background: transparent;
+    cursor: pointer;
+    height: 18px;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+  }
+  .artbox-pg input[type="range"]::-webkit-slider-runnable-track {
+    height: 2px;
+    background: var(--color-pg-border);
+    border-radius: 1px;
+  }
+  .artbox-pg input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 11px;
+    height: 11px;
+    border-radius: 50%;
+    background: var(--color-pg-accent);
+    margin-top: -4.5px;
+    border: 2px solid var(--color-pg-bg);
+    box-shadow: 0 0 0 1px var(--color-pg-accent-mid);
+    transition: box-shadow 0.15s;
+  }
+  .artbox-pg input[type="range"]:hover::-webkit-slider-thumb {
+    box-shadow: 0 0 0 3px var(--color-pg-accent-mid);
+  }
+  .artbox-pg input[type="range"]::-moz-range-track {
+    height: 2px;
+    background: var(--color-pg-border);
+    border-radius: 1px;
+    border: none;
+  }
+  .artbox-pg input[type="range"]::-moz-range-thumb {
+    width: 11px;
+    height: 11px;
+    border-radius: 50%;
+    background: var(--color-pg-accent);
+    border: 2px solid var(--color-pg-bg);
+    box-shadow: 0 0 0 1px var(--color-pg-accent-mid);
+  }
+  .artbox-pg input[type="range"]:hover::-moz-range-thumb {
+    box-shadow: 0 0 0 3px var(--color-pg-accent-mid);
+  }
+
+  /* Color picker */
+  .artbox-pg input[type="color"] {
+    -webkit-appearance: none;
+    appearance: none;
+    border: none;
+    padding: 0;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    cursor: pointer;
+    background: transparent;
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+  .artbox-pg input[type="color"]::-webkit-color-swatch-wrapper {
+    padding: 0;
+  }
+  .artbox-pg input[type="color"]::-webkit-color-swatch {
+    border: 2px solid var(--color-pg-border);
+    border-radius: 50%;
+  }
+  .artbox-pg input[type="color"]::-moz-color-swatch {
+    border: 2px solid var(--color-pg-border);
+    border-radius: 50%;
+  }
+
+  /* Code block inside details */
+  .artbox-pg details summary {
+    cursor: pointer;
+    list-style: none;
+  }
+  .artbox-pg details summary::-webkit-details-marker {
+    display: none;
+  }
+
+  /* Focus */
+  .artbox-pg input:focus-visible,
+  .artbox-pg pre:focus-visible {
+    outline: 1px solid var(--color-pg-accent);
+    outline-offset: 1px;
+  }
+  .artbox-pg button:focus-visible {
+    outline: none;
+  }
+}

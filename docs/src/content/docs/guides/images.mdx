@@ -6,7 +6,7 @@ description: Terminal image output with ASCII fallback.
 ## Enable the feature
 
 ```toml
-artbox = { version = "0.1", features = ["images"] }
+artbox = { version = "0.2", features = ["images"] }
 ```
 
 ## Auto output (terminal or ASCII)
@@ -19,8 +19,11 @@ let art = Artbox::default().with_image_output(ImageOutput::Auto);
 let rendered = art.render_image_path("logo.svg", RenderTarget::new(40, 12))?;
 
 // Terminal output if supported, else ASCII
-print!("{}", rendered.to_terminal_or_ansi_string());
+print!("{}", rendered.to_ansi_string());
 ```
+
+`Rendered::to_ansi_string()` returns terminal image escape sequences when inline image
+protocols are available, and ANSI-colored ASCII output otherwise.
 
 ## Force ASCII output
 
@@ -56,5 +59,5 @@ let art = Artbox::default()
     .with_image_terminal_config(config);
 
 let rendered = art.render_image_path("logo.png", RenderTarget::new(40, 12))?;
-print!("{}", rendered.to_terminal_or_ansi_string());
+print!("{}", rendered.to_ansi_string());
 ```

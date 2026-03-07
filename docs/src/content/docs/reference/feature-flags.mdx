@@ -11,7 +11,19 @@ Enables:
 - `Artbox::render_image_path` / `render_image_bytes`
 
 ```toml
-artbox = { version = "0.1", features = ["images"] }
+artbox = { version = "0.2", features = ["images"] }
+```
+
+## cli
+
+Enables:
+- The `artbox` binary
+- CLI argument parsing for examples like `gradient`
+
+The `artbox` binary itself requires both `cli` and `images`.
+
+```toml
+artbox = { version = "0.2", features = ["cli", "images"] }
 ```
 
 ## ratatui
@@ -21,5 +33,5 @@ Enables:
 - `integrations::ratatui::SpriteBox` widget
 
 ```toml
-artbox = { version = "0.1", features = ["ratatui"] }
+artbox = { version = "0.2", features = ["ratatui"] }
 ```
