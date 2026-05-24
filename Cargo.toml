@@ -1,6 +1,6 @@
 [package]
 name = "artbox"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2021"
 description = "Render text and ascii art into a bounded rectangle with colors and gradients"
 license = "MIT"
@@ -16,17 +16,17 @@ images = ["dep:base64", "dep:image", "dep:resvg"]
 cli = ["dep:clap"]
 
 [dependencies]
-figlet-rs = "0.1"
-unicode-width = "0.1"
-ratatui = { version = "0.29", optional = true }
+figlet-rs = "1.0"
+unicode-width = "0.2"
+ratatui = { version = "0.30", optional = true }
 base64 = { version = "0.22", optional = true }
 image = { version = "0.25", optional = true }
-resvg = { version = "0.43", optional = true }
+resvg = { version = "0.47", optional = true }
 clap = { version = "4.5.23", features = ["derive"], optional = true }
 
 [dev-dependencies]
-tui-dispatch = "0.5.4"
-crossterm = "0.28"
+tui-dispatch = "0.7.1"
+crossterm = "0.29"
 
 [[bin]]
 name = "artbox"

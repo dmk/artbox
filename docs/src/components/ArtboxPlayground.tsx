@@ -151,7 +151,6 @@ export function ArtboxPlayground() {
   const [isResizing, setIsResizing] = useState(false);
   const [showSizeBadge, setShowSizeBadge] = useState(false);
   const [fadeSizeBadge, setFadeSizeBadge] = useState(false);
-  const [isDark, setIsDark] = useState(true);
   const [codeOpen, setCodeOpen] = useState(false);
 
   const stageRef = useRef<HTMLDivElement | null>(null);
@@ -165,17 +164,7 @@ export function ArtboxPlayground() {
   const badgeFadeTimeoutRef = useRef<number | null>(null);
   const bodyUserSelectRef = useRef("");
   const bodyCursorRef = useRef("");
-
-  /* ── Theme detection ── */
-
-  useEffect(() => {
-    const html = document.documentElement;
-    const update = () => setIsDark(html.dataset.theme !== "light");
-    update();
-    const obs = new MutationObserver(update);
-    obs.observe(html, { attributes: true, attributeFilter: ["data-theme"] });
-    return () => obs.disconnect();
-  }, []);
+  const initialFitDoneRef = useRef(false);
 
   /* ── Resize logic ── */
 
@@ -355,14 +344,27 @@ export function ArtboxPlayground() {
     const update = () => {
       const w = el.clientWidth, h = el.clientHeight;
       const cur = previewSizeRef.current;
-      if (w > 0 && h > 0 && cur.cols > 0 && cur.rows > 0)
-        cellSizeRef.current = { width: w / cur.cols, height: h / cur.rows };
+      if (w <= 0 || h <= 0 || cur.cols <= 0 || cur.rows <= 0) return;
+      const cell = { width: w / cur.cols, height: h / cur.rows };
+      if (cell.width < 4 || cell.height < 8) return;
+      cellSizeRef.current = cell;
+      if (!initialFitDoneRef.current) {
+        initialFitDoneRef.current = true;
+        const stage = stageRef.current;
+        if (stage && stage.clientWidth > 0 && stage.clientHeight > 0) {
+          const bounds = getResizeBounds(cell);
+          applyPreviewSize(
+            { cols: bounds.maxCols, rows: bounds.maxRows },
+            { cellOverride: cell },
+          );
+        }
+      }
     };
     update();
     const obs = new ResizeObserver(update);
     obs.observe(el);
     return () => obs.disconnect();
-  }, []);
+  }, [applyPreviewSize, getResizeBounds]);
 
   useEffect(() => {
     if (isResizing || !stageRef.current) return;
@@ -528,20 +530,20 @@ export function ArtboxPlayground() {
 
   return (
     <div className="artbox-pg not-content mt-2 mb-4">
-      <div className="bg-pg-bg rounded-[10px] border border-pg-border overflow-hidden">
+      <div className="rounded-[10px] border border-pg-border overflow-hidden">
         {/* ── Terminal preview ── */}
         <div className="relative" style={{ height: PREVIEW_HEIGHT, overflow: "hidden" }}>
           <div ref={stageRef} className="relative w-full h-full grid place-items-center bg-pg-terminal-bg"
             style={{ overflow: "hidden" }}>
             {showSizeBadge && (
-              <div className={`absolute top-1.5 right-1.5 z-[2] pointer-events-none font-pg-mono text-[0.58rem] tabular-nums text-pg-text bg-[rgba(12,16,24,0.85)] border border-pg-border rounded px-[5px] py-[1px] tracking-[0.02em] backdrop-blur-[4px] transition-opacity duration-[220ms] ease-out ${
+              <div className={`absolute top-1.5 right-1.5 z-[2] pointer-events-none font-pg-mono text-[0.58rem] tabular-nums text-[#dce6ff] bg-[rgba(12,16,24,0.85)] border border-[#1e2b3a] rounded px-[5px] py-[1px] tracking-[0.02em] backdrop-blur-[4px] transition-opacity duration-[220ms] ease-out ${
                 fadeSizeBadge ? "opacity-0" : "opacity-100"
               }`}>
                 {displaySize.cols}&times;{displaySize.rows}
               </div>
             )}
 
-            <div className={`relative inline-block rounded-sm ${isDark ? "border border-pg-border" : ""}`}>
+            <div className="relative inline-block rounded-sm border border-pg-border">
               <div ref={previewSurfaceRef} className="inline-block">
                 <TuiPreview key={rerunKey} wasm={wasmUrl} argv={argv}
                   mode="static" fit="none" size={previewSize}

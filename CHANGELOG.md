@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.3.0] - 2026-05-24
+
+### Changed
+
+- Updated `ratatui` to 0.30
+- Updated `figlet-rs` to 1.0 (breaking: `Font::figlet` now takes `figlet_rs::FIGlet` instead of `figlet_rs::FIGfont`)
+- Updated `unicode-width` to 0.2
+- Updated `resvg` to 0.47 (`images` feature)
+- Updated `crossterm` to 0.29 and `tui-dispatch` to 0.7 (examples)
+- Updated other dependencies to latest compatible versions
+
 ## [0.2.0] - 2026-02-07
 
 ### Added
@@ -63,5 +74,6 @@ Initial release.
 - `ratatui` feature flag for TUI widget integration
 - `ArtBox` widget implementing ratatui's `Widget` trait
 
+[0.3.0]: https://github.com/dmk/artbox/releases/tag/v0.3.0
 [0.2.0]: https://github.com/dmk/artbox/releases/tag/v0.2.0
 [0.1.0]: https://github.com/dmk/artbox/releases/tag/v0.1.0

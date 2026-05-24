@@ -65,7 +65,7 @@
 
 use std::sync::Arc;
 
-use figlet_rs::FIGfont;
+use figlet_rs::FIGlet;
 use unicode_width::UnicodeWidthStr;
 
 pub mod color;
@@ -229,16 +229,16 @@ pub struct Font {
 
 #[derive(Clone)]
 enum FontKind {
-    Figlet(Arc<FIGfont>),
+    Figlet(Arc<FIGlet>),
     Plain,
 }
 
 impl Font {
-    /// Creates a font from a parsed FIGfont.
+    /// Creates a font from a parsed FIGlet.
     ///
     /// This is a low-level constructor. Prefer [`Font::from_file`], [`Font::from_content`],
     /// or the [`fonts`] module for loading fonts.
-    pub fn figlet(font: FIGfont) -> Self {
+    pub fn figlet(font: FIGlet) -> Self {
         Self {
             kind: FontKind::Figlet(Arc::new(font)),
         }
@@ -301,7 +301,7 @@ impl Font {
     ///
     /// Returns `None` if the standard font cannot be loaded.
     pub fn standard() -> Option<Self> {
-        FIGfont::standard().ok().map(Self::figlet)
+        FIGlet::standard().ok().map(Self::figlet)
     }
 
     /// Creates a plain text font that renders text without ASCII art styling.
@@ -883,7 +883,7 @@ impl From<std::str::Utf8Error> for FontError {
     }
 }
 
-fn render_figlet_with_spacing(font: &FIGfont, content: &str, spacing: i16) -> Option<String> {
+fn render_figlet_with_spacing(font: &FIGlet, content: &str, spacing: i16) -> Option<String> {
     if content.is_empty() {
         return None;
     }
@@ -913,14 +913,12 @@ fn render_figlet_with_spacing(font: &FIGfont, content: &str, spacing: i16) -> Op
                 }
             }
 
-            let mut pos = cursor.max(0) as usize;
-            for ch in line.chars() {
+            for (pos, ch) in (cursor.max(0) as usize..).zip(line.chars()) {
                 if pos >= row.len() {
                     row.push(ch);
                 } else if ch != ' ' {
                     row[pos] = ch;
                 }
-                pos += 1;
             }
         }
 
@@ -989,14 +987,14 @@ fn latin1_to_string(bytes: &[u8]) -> String {
     bytes.iter().map(|byte| *byte as char).collect()
 }
 
-fn parse_figlet_content(contents: &str) -> Result<FIGfont, FontError> {
-    match FIGfont::from_content(contents) {
+fn parse_figlet_content(contents: &str) -> Result<FIGlet, FontError> {
+    match FIGlet::from_content(contents) {
         Ok(font) => Ok(font),
         Err(err) => {
             let Some(sanitized) = sanitize_figlet_content(contents) else {
                 return Err(FontError::Parse(err));
             };
-            FIGfont::from_content(&sanitized).map_err(FontError::Parse)
+            FIGlet::from_content(&sanitized).map_err(FontError::Parse)
         }
     }
 }

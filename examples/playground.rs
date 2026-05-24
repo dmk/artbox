@@ -220,6 +220,11 @@ mod playground {
         Quit,
     }
 
+    /// Side effects emitted by the reducer and handled by the event loop.
+    enum Effect {
+        Quit,
+    }
+
     struct AppState {
         tab: Tab,
         font_menu_index: usize,
@@ -541,7 +546,8 @@ mod playground {
             if let Event::Key(key) = event::read()? {
                 let action = map_key_to_action(store.state(), key.code);
                 if let Some(action) = action {
-                    if !store.dispatch(action) {
+                    let result = store.dispatch(action);
+                    if result.effects.iter().any(|e| matches!(e, Effect::Quit)) {
                         break;
                     }
                 }
@@ -553,19 +559,19 @@ mod playground {
         Ok(())
     }
 
-    fn reducer(state: &mut AppState, action: Action) -> bool {
+    fn reducer(state: &mut AppState, action: Action) -> ReducerResult<Effect> {
         match action {
             Action::NextTab => {
                 state.tab = state.tab.next();
-                true
+                ReducerResult::changed()
             }
             Action::PrevTab => {
                 state.tab = state.tab.prev();
-                true
+                ReducerResult::changed()
             }
             Action::ToggleHelp => {
                 state.show_help = !state.show_help;
-                true
+                ReducerResult::changed()
             }
             Action::MenuUp => {
                 match state.tab {
@@ -576,7 +582,7 @@ mod playground {
                         state.sprite_menu_index = state.sprite_menu_index.saturating_sub(1);
                     }
                 }
-                true
+                ReducerResult::changed()
             }
             Action::MenuDown => {
                 match state.tab {
@@ -589,21 +595,21 @@ mod playground {
                         state.sprite_menu_index = (state.sprite_menu_index + 1).min(len - 1);
                     }
                 }
-                true
+                ReducerResult::changed()
             }
             Action::MenuLeft => {
                 apply_menu_change(state, -1);
-                true
+                ReducerResult::changed()
             }
             Action::MenuRight => {
                 apply_menu_change(state, 1);
-                true
+                ReducerResult::changed()
             }
             Action::MenuToggle => {
                 apply_menu_toggle(state);
-                true
+                ReducerResult::changed()
             }
-            Action::Quit => false,
+            Action::Quit => ReducerResult::effect(Effect::Quit),
         }
     }
 

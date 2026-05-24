@@ -604,15 +604,11 @@ fn average_color(pixels: &[Option<image::Rgba<u8>>; 4]) -> Option<Rgb> {
         count += 1;
     }
 
-    if count == 0 {
-        None
-    } else {
-        Some(Rgb::new(
-            (r_sum / count) as u8,
-            (g_sum / count) as u8,
-            (b_sum / count) as u8,
-        ))
-    }
+    Some(Rgb::new(
+        (r_sum.checked_div(count)?) as u8,
+        (g_sum / count) as u8,
+        (b_sum / count) as u8,
+    ))
 }
 
 #[cfg(test)]
